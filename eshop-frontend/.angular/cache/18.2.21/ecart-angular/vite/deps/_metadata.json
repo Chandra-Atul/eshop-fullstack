@@ -1,0 +1,82 @@
+{
+  "hash": "7788a6f5",
+  "configHash": "fb3053ea",
+  "lockfileHash": "03b879d2",
+  "browserHash": "56ff68fe",
+  "optimized": {
+    "@angular/common/http": {
+      "src": "../../../../../../node_modules/@angular/common/fesm2022/http.mjs",
+      "file": "@angular_common_http.js",
+      "fileHash": "048167bc",
+      "needsInterop": false
+    },
+    "@angular/core": {
+      "src": "../../../../../../node_modules/@angular/core/fesm2022/core.mjs",
+      "file": "@angular_core.js",
+      "fileHash": "a0effbc5",
+      "needsInterop": false
+    },
+    "@angular/forms": {
+      "src": "../../../../../../node_modules/@angular/forms/fesm2022/forms.mjs",
+      "file": "@angular_forms.js",
+      "fileHash": "e4dfaf6d",
+      "needsInterop": false
+    },
+    "@angular/platform-browser": {
+      "src": "../../../../../../node_modules/@angular/platform-browser/fesm2022/platform-browser.mjs",
+      "file": "@angular_platform-browser.js",
+      "fileHash": "fd9beefe",
+      "needsInterop": false
+    },
+    "@angular/router": {
+      "src": "../../../../../../node_modules/@angular/router/fesm2022/router.mjs",
+      "file": "@angular_router.js",
+      "fileHash": "a1013041",
+      "needsInterop": false
+    },
+    "country-state-city": {
+      "src": "../../../../../../node_modules/country-state-city/lib/index.js",
+      "file": "country-state-city.js",
+      "fileHash": "189c4c60",
+      "needsInterop": false
+    },
+    "lottie-web": {
+      "src": "../../../../../../node_modules/lottie-web/build/player/lottie.js",
+      "file": "lottie-web.js",
+      "fileHash": "5380c95d",
+      "needsInterop": true
+    },
+    "rxjs": {
+      "src": "../../../../../../node_modules/rxjs/dist/esm5/index.js",
+      "file": "rxjs.js",
+      "fileHash": "112a4511",
+      "needsInterop": false
+    },
+    "socket.io-client": {
+      "src": "../../../../../../node_modules/socket.io-client/build/esm/index.js",
+      "file": "socket__io-client.js",
+      "fileHash": "80295ad9",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-ZLMRRKAL": {
+      "file": "chunk-ZLMRRKAL.js"
+    },
+    "chunk-3LBCMYIS": {
+      "file": "chunk-3LBCMYIS.js"
+    },
+    "chunk-SJ3L3JH5": {
+      "file": "chunk-SJ3L3JH5.js"
+    },
+    "chunk-CGVEXRPO": {
+      "file": "chunk-CGVEXRPO.js"
+    },
+    "chunk-NMGQAJ6K": {
+      "file": "chunk-NMGQAJ6K.js"
+    },
+    "chunk-4MWRP73S": {
+      "file": "chunk-4MWRP73S.js"
+    }
+  }
+}

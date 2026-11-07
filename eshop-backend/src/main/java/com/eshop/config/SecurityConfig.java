@@ -38,18 +38,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/test", "/api/v2/payment/**").permitAll()
-                .requestMatchers("/api/v2/user/create-user", "/api/v2/user/activation", "/api/v2/user/login-user", "/api/v2/user/logout", "/api/v2/user/user-info/**").permitAll()
-                .requestMatchers("/api/v2/shop/create-shop", "/api/v2/shop/activation", "/api/v2/shop/login-shop", "/api/v2/shop/logout", "/api/v2/shop/get-shop-info/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v2/product/**", "/api/v2/event/**", "/api/v2/coupon/get-coupon-value/**").permitAll()
-                .requestMatchers("/api/v2/conversation/**", "/api/v2/message/**").permitAll()
-                .requestMatchers("/api/v2/**/admin-*").hasRole("Admin")
-                .anyRequest().authenticated()
-            );
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/test", "/api/v2/payment/**").permitAll()
+                        .requestMatchers("/api/v2/user/create-user", "/api/v2/user/activation", "/api/v2/user/login-user", "/api/v2/user/logout", "/api/v2/user/user-info/**").permitAll()
+                        .requestMatchers("/api/v2/shop/create-shop", "/api/v2/shop/activation", "/api/v2/shop/login-shop", "/api/v2/shop/logout", "/api/v2/shop/get-shop-info/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v2/product/**", "/api/v2/event/**", "/api/v2/coupon/get-coupon-value/**").permitAll()
+                        .requestMatchers("/api/v2/conversation/**", "/api/v2/message/**").permitAll()
+                        .requestMatchers("/api/v2/*/admin-*").hasRole("Admin") // <-- Fixed here
+                        .anyRequest().authenticated()
+                );
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

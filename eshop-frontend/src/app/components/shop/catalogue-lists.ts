@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../core/icon.component';
 import { styles } from '../../styles';
@@ -9,18 +9,35 @@ import { server } from '../../config';
 import { DataTableComponent, GridColumn } from '../../shared/data-table.component';
 import { LoaderComponent } from '../layout/loader.component';
 
+// ==========================================
+// 1. SHOP ALL PRODUCTS COMPONENT
+// ==========================================
 @Component({
   selector: 'app-shop-all-products',
   standalone: true,
   imports: [DataTableComponent, LoaderComponent],
-  template: `@if (isLoading()) { <app-loader /> } @else {
-    <div class="w-full mx-8 pt-1 mt-10 bg-white"><app-data-table [rows]="row()" [columns]="columns" [pageSize]="10" (cellAction)="onCellAction($event)" /></div>
-  }`,
+  template: `
+    @if (isLoading()) {
+      <app-loader />
+    } @else {
+      <div class="w-full mx-8 pt-1 mt-10 bg-white">
+        <app-data-table
+          [rows]="row()"
+          [columns]="columns"
+          [pageSize]="10"
+          (cellAction)="onCellAction($event)"
+        />
+      </div>
+    }
+  `,
 })
 export class ShopAllProductsComponent implements OnInit {
   private productStore = inject(ProductStore);
   private sellerStore = inject(SellerStore);
+  private toast = inject(ToastService);
+
   isLoading = computed(() => this.productStore.isLoading());
+
   columns: GridColumn[] = [
     { field: 'id', headerName: 'Product Id', minWidth: 150, flex: 0.7 },
     { field: 'name', headerName: 'Name', minWidth: 180, flex: 1.4 },
@@ -30,26 +47,86 @@ export class ShopAllProductsComponent implements OnInit {
     { field: 'Preview', headerName: '', flex: 0.8, minWidth: 100, linkPrefix: '/product', icon: 'AiOutlineEye' },
     { field: 'Delete', headerName: '', flex: 0.8, minWidth: 120, actionIcon: 'AiOutlineDelete' },
   ];
-  row = computed(() => (this.productStore.products() || []).map((i) => ({ id: i._id, name: i.name, price: 'US$ ' + i.discountPrice, Stock: i.stock, sold: i?.sold_out })));
-  ngOnInit() { const s = this.sellerStore.seller(); if (s) this.productStore.getAllProductsShop(s._id); }
-  onCellAction(e: any) { this.handleDelete(e.row.id); }
-  handleDelete(id: string) { this.productStore.deleteProduct(id); window.location.reload(); }
+
+  row = computed(() =>
+      (this.productStore.products() || []).map((i) => ({
+        id: i._id,
+        name: i.name,
+        price: 'US$ ' + i.discountPrice,
+        Stock: i.stock,
+        sold: i?.sold_out || 0,
+      }))
+  );
+
+  constructor() {
+    // Automatically loads products whenever seller data resolves
+    effect(() => {
+      const seller = this.sellerStore.seller();
+      if (seller?._id) {
+        this.productStore.getAllProductsShop(seller._id);
+      }
+    });
+  }
+
+  ngOnInit() {
+    const seller = this.sellerStore.seller();
+    if (seller?._id) {
+      this.productStore.getAllProductsShop(seller._id);
+    }
+  }
+
+  onCellAction(e: any) {
+    if (e.action === 'Delete' || (!e.action && e.row?.id)) {
+      this.handleDelete(e.row.id);
+    }
+  }
+
+  async handleDelete(id: string) {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    try {
+      await this.productStore.deleteProduct(id);
+      this.toast.success('Product deleted successfully!');
+      const seller = this.sellerStore.seller();
+      if (seller?._id) {
+        this.productStore.getAllProductsShop(seller._id);
+      }
+    } catch {
+      this.toast.error('Failed to delete product');
+    }
+  }
 }
 
+// ==========================================
+// 2. SHOP ALL EVENTS COMPONENT
+// ==========================================
 @Component({
   selector: 'app-shop-all-events',
   standalone: true,
   imports: [DataTableComponent, LoaderComponent],
-  template: `@if (isLoading()) { <app-loader /> } @else {
-    <div class="w-full mx-8 pt-1 mt-10 bg-white"><app-data-table [rows]="row()" [columns]="columns" [pageSize]="10" (cellAction)="onCellAction($event)" /></div>
-  }`,
+  template: `
+    @if (isLoading()) {
+      <app-loader />
+    } @else {
+      <div class="w-full mx-8 pt-1 mt-10 bg-white">
+        <app-data-table
+          [rows]="row()"
+          [columns]="columns"
+          [pageSize]="10"
+          (cellAction)="onCellAction($event)"
+        />
+      </div>
+    }
+  `,
 })
 export class ShopAllEventsComponent implements OnInit {
   private eventStore = inject(EventStore);
   private sellerStore = inject(SellerStore);
+  private toast = inject(ToastService);
+
   isLoading = computed(() => this.eventStore.isLoading());
+
   columns: GridColumn[] = [
-    { field: 'id', headerName: 'Product Id', minWidth: 150, flex: 0.7 },
+    { field: 'id', headerName: 'Event Id', minWidth: 150, flex: 0.7 },
     { field: 'name', headerName: 'Name', minWidth: 180, flex: 1.4 },
     { field: 'price', headerName: 'Price', minWidth: 100, flex: 0.6 },
     { field: 'Stock', headerName: 'Stock', type: 'number', minWidth: 80, flex: 0.5 },
@@ -57,91 +134,291 @@ export class ShopAllEventsComponent implements OnInit {
     { field: 'Preview', headerName: '', flex: 0.8, minWidth: 100, linkPrefix: '/product', icon: 'AiOutlineEye' },
     { field: 'Delete', headerName: '', flex: 0.8, minWidth: 120, actionIcon: 'AiOutlineDelete' },
   ];
-  row = computed(() => (this.eventStore.events() || []).map((i) => ({ id: i._id, name: i.name, price: 'US$ ' + i.discountPrice, Stock: i.stock, sold: i.sold_out })));
-  ngOnInit() { const s = this.sellerStore.seller(); if (s) this.eventStore.getAllEventsShop(s._id); }
-  onCellAction(e: any) { this.handleDelete(e.row.id); }
-  handleDelete(id: string) { this.eventStore.deleteEvent(id); window.location.reload(); }
+
+  row = computed(() =>
+      (this.eventStore.events() || []).map((i) => ({
+        id: i._id,
+        name: i.name,
+        price: 'US$ ' + i.discountPrice,
+        Stock: i.stock,
+        sold: i.sold_out || 0,
+      }))
+  );
+
+  constructor() {
+    effect(() => {
+      const seller = this.sellerStore.seller();
+      if (seller?._id) {
+        this.eventStore.getAllEventsShop(seller._id);
+      }
+    });
+  }
+
+  ngOnInit() {
+    const seller = this.sellerStore.seller();
+    if (seller?._id) {
+      this.eventStore.getAllEventsShop(seller._id);
+    }
+  }
+
+  onCellAction(e: any) {
+    if (e.action === 'Delete' || (!e.action && e.row?.id)) {
+      this.handleDelete(e.row.id);
+    }
+  }
+
+  async handleDelete(id: string) {
+    if (!confirm('Are you sure you want to delete this event?')) return;
+    try {
+      await this.eventStore.deleteEvent(id);
+      this.toast.success('Event deleted successfully!');
+      const seller = this.sellerStore.seller();
+      if (seller?._id) {
+        this.eventStore.getAllEventsShop(seller._id);
+      }
+    } catch {
+      this.toast.error('Failed to delete event');
+    }
+  }
 }
 
+// ==========================================
+// 3. ALL COUPONS COMPONENT
+// ==========================================
 @Component({
   selector: 'app-all-coupons',
   standalone: true,
   imports: [FormsModule, IconComponent, DataTableComponent, LoaderComponent],
-  template: `@if (isLoading()) { <app-loader /> } @else {
-    <div class="w-full mx-8 pt-1 mt-10 bg-white">
-      <div class="w-full flex justify-end">
-        <div class="{{ styles.button }} !w-max !h-[45px] px-3 !rounded-[5px] mr-3 mb-3" (click)="open.set(true)"><span class="text-white">Create Coupon Code</span></div>
-      </div>
-      <app-data-table [rows]="row()" [columns]="columns" [pageSize]="10" (cellAction)="onCellAction($event)" />
-      @if (open()) {
-        <div class="fixed top-0 left-0 w-full h-screen bg-[#00000062] z-[20000] flex items-center justify-center">
-          <div class="w-[90%] 800px:w-[40%] h-[80vh] bg-white rounded-md shadow p-4">
-            <div class="w-full flex justify-end"><app-icon name="RxCross1" [size]="30" class="cursor-pointer" (click)="open.set(false)" /></div>
-            <h5 class="text-[30px] font-Poppins text-center">Create Coupon code</h5>
-            <form (ngSubmit)="handleSubmit($event)"><br />
-              <div><label class="pb-2">Name <span class="text-red-500">*</span></label>
-                <input type="text" name="name" required [(ngModel)]="name" class="{{ inputClass }}" placeholder="Enter your coupon code name..." /></div><br />
-              <div><label class="pb-2">Discount Percentenge <span class="text-red-500">*</span></label>
-                <input type="text" name="value" [ngModel]="value()" (ngModelChange)="value.set($event)" required class="{{ inputClass }}" placeholder="Enter your coupon code value..." /></div><br />
-              <div><label class="pb-2">Min Amount</label>
-                <input type="number" name="minAmount" [ngModel]="minAmount()" (ngModelChange)="minAmount.set($event)" class="{{ inputClass }}" placeholder="Enter your coupon code min amount..." /></div><br />
-              <div><label class="pb-2">Max Amount</label>
-                <input type="number" name="maxAmount" [ngModel]="maxAmount()" (ngModelChange)="maxAmount.set($event)" class="{{ inputClass }}" placeholder="Enter your coupon code max amount..." /></div><br />
-              <div><label class="pb-2">Selected Product</label>
-                <select class="w-full mt-2 border h-[35px] rounded-[5px]" [value]="selectedProducts()" (change)="selectedProducts.set($any($event.target).value)">
-                  <option value="Choose your selected products">Choose a selected product</option>
-                  @for (i of products(); track i._id) { <option [value]="i.name">{{ i.name }}</option> }
-                </select></div><br />
-              <div><input type="submit" value="Create" class="{{ inputClass }}" /></div>
-            </form>
+  template: `
+    @if (isLoading()) {
+      <app-loader />
+    } @else {
+      <div class="w-full mx-8 pt-1 mt-10 bg-white">
+        <div class="w-full flex justify-end">
+          <div
+            class="{{ styles.button }} !w-max !h-[45px] px-3 !rounded-[5px] mr-3 mb-3 cursor-pointer"
+            (click)="open.set(true)"
+          >
+            <span class="text-white">Create Coupon Code</span>
           </div>
         </div>
-      }
-    </div>
-  }`,
+
+        <app-data-table
+          [rows]="row()"
+          [columns]="columns"
+          [pageSize]="10"
+          (cellAction)="onCellAction($event)"
+        />
+
+        @if (open()) {
+          <div class="fixed top-0 left-0 w-full h-screen bg-[#00000062] z-[20000] flex items-center justify-center">
+            <div class="w-[90%] 800px:w-[40%] max-h-[85vh] overflow-y-auto bg-white rounded-md shadow p-6">
+              <div class="w-full flex justify-end">
+                <app-icon name="RxCross1" [size]="26" class="cursor-pointer" (click)="open.set(false)" />
+              </div>
+              <h5 class="text-[26px] font-Poppins font-semibold text-center text-gray-800">Create Coupon Code</h5>
+
+              <form (ngSubmit)="handleSubmit($event)" class="mt-4 space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    [(ngModel)]="name"
+                    class="{{ inputClass }}"
+                    placeholder="Enter coupon code name..."
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Discount Percentage <span class="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    name="value"
+                    required
+                    [ngModel]="value()"
+                    (ngModelChange)="value.set($event)"
+                    class="{{ inputClass }}"
+                    placeholder="e.g. 10"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Min Amount</label>
+                  <input
+                    type="number"
+                    name="minAmount"
+                    [ngModel]="minAmount()"
+                    (ngModelChange)="minAmount.set($event)"
+                    class="{{ inputClass }}"
+                    placeholder="Enter min amount..."
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Max Amount</label>
+                  <input
+                    type="number"
+                    name="maxAmount"
+                    [ngModel]="maxAmount()"
+                    (ngModelChange)="maxAmount.set($event)"
+                    class="{{ inputClass }}"
+                    placeholder="Enter max amount..."
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Selected Product</label>
+                  <select
+                    class="w-full mt-2 border border-gray-300 h-[38px] px-2 rounded-[4px] text-sm focus:ring-blue-500 focus:border-blue-500"
+                    [value]="selectedProducts()"
+                    (change)="selectedProducts.set($any($event.target).value)"
+                  >
+                    <option value="">Choose a product (optional)</option>
+                    @for (i of products(); track i._id) {
+                      <option [value]="i.name">{{ i.name }}</option>
+                    }
+                  </select>
+                </div>
+
+                <div class="pt-2">
+                  <input
+                    type="submit"
+                    value="Create Coupon"
+                    class="w-full h-[40px] bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-[4px] cursor-pointer transition-colors"
+                  />
+                </div>
+              </form>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  `,
 })
 export class AllCouponsComponent implements OnInit {
   private api = inject(ApiService);
   private toast = inject(ToastService);
   private sellerStore = inject(SellerStore);
   private productStore = inject(ProductStore);
+
   styles = styles;
-  inputClass = 'mt-2 appearance-none block w-full px-3 h-[35px] border border-gray-300 rounded-[3px] placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm';
+  inputClass =
+      'mt-1 appearance-none block w-full px-3 h-[38px] border border-gray-300 rounded-[4px] placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm';
+
   open = signal(false);
   name = '';
   isLoading = signal(false);
   coupouns = signal<any[]>([]);
-  minAmount = signal<any>(null); maxAmount = signal<any>(null); selectedProducts = signal<any>(null); value = signal<any>(null);
+
+  minAmount = signal<number | null>(null);
+  maxAmount = signal<number | null>(null);
+  selectedProducts = signal<string>('');
+  value = signal<number | null>(null);
+
   products = computed(() => this.productStore.products() || []);
+
   columns: GridColumn[] = [
     { field: 'id', headerName: 'Id', minWidth: 150, flex: 0.7 },
     { field: 'name', headerName: 'Coupon Code', minWidth: 180, flex: 1.4 },
     { field: 'price', headerName: 'Value', minWidth: 100, flex: 0.6 },
     { field: 'Delete', headerName: '', flex: 0.8, minWidth: 120, actionIcon: 'AiOutlineDelete' },
   ];
-  row = computed(() => (this.coupouns() || []).map((i) => ({ id: i._id, name: i.name, price: i.value + ' %', sold: 10 })));
-  async ngOnInit() {
-    const seller = this.sellerStore.seller(); if (!seller) return;
+
+  row = computed(() =>
+      (this.coupouns() || []).map((i) => ({
+        id: i._id,
+        name: i.name,
+        price: i.value + ' %',
+      }))
+  );
+
+  constructor() {
+    effect(() => {
+      const seller = this.sellerStore.seller();
+      if (seller?._id) {
+        this.fetchCoupons(seller._id);
+        // Ensure products are populated for the coupon modal selection
+        this.productStore.getAllProductsShop(seller._id);
+      }
+    });
+  }
+
+  ngOnInit() {
+    const seller = this.sellerStore.seller();
+    if (seller?._id) {
+      this.fetchCoupons(seller._id);
+      this.productStore.getAllProductsShop(seller._id);
+    }
+  }
+
+  async fetchCoupons(shopId: string) {
     this.isLoading.set(true);
-    try { const res: any = await this.api.get(`${server}/coupon/get-coupon/${seller._id}`, true); this.isLoading.set(false); this.coupouns.set(res.couponCodes); }
-    catch (e) { this.isLoading.set(false); }
+    try {
+      const res: any = await this.api.get(`${server}/coupon/get-coupon/${shopId}`, true);
+      this.coupouns.set(res.couponCodes || []);
+    } catch {
+      this.coupouns.set([]);
+    } finally {
+      this.isLoading.set(false);
+    }
   }
-  onCellAction(e: any) { this.handleDelete(e.row.id); }
+
+  onCellAction(e: any) {
+    if (e.action === 'Delete' || (!e.action && e.row?.id)) {
+      this.handleDelete(e.row.id);
+    }
+  }
+
   async handleDelete(id: string) {
-    await this.api.delete(`${server}/coupon/delete-coupon/${id}`, true);
-    this.toast.success('Coupon code deleted succesfully!');
-    window.location.reload();
+    if (!confirm('Are you sure you want to delete this coupon code?')) return;
+    try {
+      await this.api.delete(`${server}/coupon/delete-coupon/${id}`, true);
+      this.toast.success('Coupon code deleted successfully!');
+      // Update local state without reloading
+      this.coupouns.update((items) => items.filter((c) => c._id !== id));
+    } catch (e: any) {
+      this.toast.error(this.api.message(e));
+    }
   }
+
   async handleSubmit(e: Event) {
     e.preventDefault();
     const seller = this.sellerStore.seller();
+    if (!seller?._id) return;
+
     try {
-      await this.api.post(`${server}/coupon/create-coupon-code`, {
-        name: this.name, minAmount: this.minAmount(), maxAmount: this.maxAmount(),
-        selectedProducts: this.selectedProducts(), value: this.value(), shopId: seller?._id,
-      }, true);
+      const res: any = await this.api.post(
+          `${server}/coupon/create-coupon-code`,
+          {
+            name: this.name,
+            minAmount: this.minAmount(),
+            maxAmount: this.maxAmount(),
+            selectedProducts: this.selectedProducts(),
+            value: this.value(),
+            shopId: seller._id,
+          },
+          true
+      );
+
       this.toast.success('Coupon code created successfully!');
-      this.open.set(false); window.location.reload();
-    } catch (error) { this.toast.error(this.api.message(error)); }
+      // Append created coupon or re-fetch list cleanly
+      if (res?.couponCode) {
+        this.coupouns.update((prev) => [...prev, res.couponCode]);
+      } else {
+        await this.fetchCoupons(seller._id);
+      }
+
+      // Reset form fields
+      this.name = '';
+      this.value.set(null);
+      this.minAmount.set(null);
+      this.maxAmount.set(null);
+      this.selectedProducts.set('');
+      this.open.set(false);
+    } catch (error) {
+      this.toast.error(this.api.message(error));
+    }
   }
 }

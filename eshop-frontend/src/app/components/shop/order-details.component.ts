@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IconComponent } from '../../core/icon.component';
 import { styles } from '../../styles';
@@ -11,47 +11,131 @@ import { server } from '../../config';
   selector: 'app-shop-order-details',
   standalone: true,
   imports: [RouterLink, IconComponent],
-  template: `<div class="py-4 min-h-screen {{ styles.section }}">
-    <div class="w-full flex items-center justify-between">
-      <div class="flex items-center"><app-icon name="BsFillBagFill" [size]="30" color="crimson" /><h1 class="pl-2 text-[25px]">Order Details</h1></div>
-      <a routerLink="/dashboard-orders"><div class="{{ styles.button }} !bg-[#fce1e6] !rounded-[4px] text-[#e94560] font-[600] !h-[45px] text-[18px]">Order List</div></a>
+  template: `
+    <div class="py-6 min-h-screen {{ styles.section }}">
+      <!-- Top Bar -->
+      <div class="w-full flex items-center justify-between">
+        <div class="flex items-center">
+          <app-icon name="BsFillBagFill" [size]="28" color="crimson" />
+          <h1 class="pl-2 text-[24px] font-semibold text-gray-800">Order Details</h1>
+        </div>
+        <a routerLink="/dashboard-orders">
+          <div class="{{ styles.button }} !bg-[#fce1e6] !rounded-[4px] text-[#e94560] font-[600] !h-[42px] px-4 text-[16px]">
+            Order List
+          </div>
+        </a>
+      </div>
+
+      <!-- Order Summary Header -->
+      <div class="w-full flex items-center justify-between pt-6 border-b pb-4">
+        <h5 class="text-gray-500 text-sm">
+          Order ID: <span class="font-mono font-medium text-gray-800">#{{ orderId()?.slice(0, 8) }}</span>
+        </h5>
+        <h5 class="text-gray-500 text-sm">
+          Placed on: <span class="font-medium text-gray-800">{{ data()?.createdAt?.slice(0, 10) || 'N/A' }}</span>
+        </h5>
+      </div>
+
+      <!-- Items in Order -->
+      <div class="py-6 space-y-4">
+        @if (data() && data()!.cart) {
+          @for (item of data()!.cart; track (item._id || $index)) {
+            <div class="w-full flex items-center justify-between border-b pb-4">
+              <div class="flex items-center">
+                <img
+                  [src]="item?.images && item.images[0]?.url ? item.images[0].url : 'https://via.placeholder.com/80'"
+                  alt="Product image"
+                  class="w-[75px] h-[75px] object-cover rounded border"
+                />
+                <div class="pl-4">
+                  <h5 class="text-[18px] font-medium text-gray-800">{{ item?.name }}</h5>
+                  <h5 class="text-[16px] text-gray-500 mt-1">
+                    US&#36;{{ item?.discountPrice }} &times; {{ item?.qty || 1 }}
+                  </h5>
+                </div>
+              </div>
+              <h5 class="text-lg font-semibold text-gray-700">
+                US&#36;{{ ((item?.discountPrice || 0) * (item?.qty || 1)).toFixed(2) }}
+              </h5>
+            </div>
+          }
+        } @else {
+          <div class="py-10 text-center text-gray-400">Loading order items...</div>
+        }
+      </div>
+
+      <!-- Total -->
+      <div class="border-t w-full text-right py-3">
+        <h5 class="text-[20px] text-gray-800">
+          Total Price: <strong class="text-red-600 font-bold">US&#36;{{ data()?.totalPrice }}</strong>
+        </h5>
+      </div>
+
+      <!-- Shipping & Payment Section -->
+      <div class="w-full 800px:flex items-start justify-between bg-gray-50 p-6 rounded-lg my-6 gap-6">
+        <div class="w-full 800px:w-[60%]">
+          <h4 class="text-[18px] font-semibold text-gray-800 mb-2">Shipping Address:</h4>
+          <p class="text-gray-600 text-base leading-relaxed">
+            {{ data()?.shippingAddress?.address1 }} {{ data()?.shippingAddress?.address2 }}<br />
+            {{ data()?.shippingAddress?.city }}, {{ data()?.shippingAddress?.country }}<br />
+            <span class="font-medium text-gray-700">Phone: </span>{{ data()?.user?.phoneNumber || 'N/A' }}
+          </p>
+        </div>
+
+        <div class="w-full 800px:w-[40%] mt-4 800px:mt-0">
+          <h4 class="text-[18px] font-semibold text-gray-800 mb-2">Payment Info:</h4>
+          <p class="text-gray-600 text-base">
+            <span class="font-medium text-gray-700">Status: </span>
+            <span [class.text-green-600]="data()?.paymentInfo?.status === 'Succeeded'"
+                  [class.text-amber-600]="data()?.paymentInfo?.status !== 'Succeeded'">
+              {{ data()?.paymentInfo?.status || 'Not Paid' }}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Status Update Section -->
+      <div class="bg-white p-6 border rounded-lg shadow-sm">
+        <h4 class="text-[18px] font-semibold text-gray-800">Order Status:</h4>
+        <p class="text-sm text-gray-500 mb-3">
+          Current status: <span class="font-semibold text-blue-600">{{ data()?.status }}</span>
+        </p>
+
+        @if (data()?.status !== 'Processing refund' && data()?.status !== 'Refund Success') {
+          <select
+            [value]="status()"
+            (change)="status.set($any($event.target).value)"
+            class="w-[260px] border border-gray-300 h-[40px] px-3 rounded-[4px] text-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            @for (option of orderStatusOptions(); track option) {
+              <option [value]="option">{{ option }}</option>
+            }
+          </select>
+        } @else {
+          <select
+            [value]="status()"
+            (change)="status.set($any($event.target).value)"
+            class="w-[260px] border border-gray-300 h-[40px] px-3 rounded-[4px] text-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            @for (option of refundStatusOptions(); track option) {
+              <option [value]="option">{{ option }}</option>
+            }
+          </select>
+        }
+
+        <div class="mt-5">
+          <button
+            type="button"
+            [disabled]="isUpdating() || !status()"
+            (click)="handleStatusUpdate()"
+            class="h-[42px] px-6 bg-[#fce1e6] hover:bg-[#fad2da] text-[#e94560] font-[600] rounded-[4px] text-[15px] cursor-pointer transition-colors disabled:opacity-50"
+          >
+            {{ isUpdating() ? 'Updating...' : 'Update Status' }}
+          </button>
+        </div>
+      </div>
     </div>
-    <div class="w-full flex items-center justify-between pt-6">
-      <h5 class="text-[#00000084]">Order ID: <span>#{{ data()?._id?.slice(0, 8) }}</span></h5>
-      <h5 class="text-[#00000084]">Placed on: <span>{{ data()?.createdAt?.slice(0, 10) }}</span></h5></div>
-    <br /><br />
-    @if (data()) {
-      @for (item of data()!.cart; track item._id) {
-        <div class="w-full flex items-start mb-5"><img [src]="item.images[0]?.url" alt="" class="w-[80px] h-[80px]" />
-          <div class="w-full"><h5 class="pl-3 text-[20px]">{{ item.name }}</h5>
-            <h5 class="pl-3 text-[20px] text-[#00000091]">US&#36;{{ item.discountPrice }} x {{ item.qty }}</h5></div></div>
-      }
-    }
-    <div class="border-t w-full text-right"><h5 class="pt-3 text-[18px]">Total Price: <strong>US&#36;{{ data()?.totalPrice }}</strong></h5></div><br /><br />
-    <div class="w-full 800px:flex items-center">
-      <div class="w-full 800px:w-[60%]">
-        <h4 class="pt-3 text-[20px] font-[600]">Shipping Address:</h4>
-        <h4 class="pt-3 text-[20px]">{{ data()?.shippingAddress?.address1 }} {{ data()?.shippingAddress?.address2 }}</h4>
-        <h4 class="text-[20px]">{{ data()?.shippingAddress?.country }}</h4>
-        <h4 class="text-[20px]">{{ data()?.shippingAddress?.city }}</h4>
-        <h4 class="text-[20px]">{{ data()?.user?.phoneNumber }}</h4></div>
-      <div class="w-full 800px:w-[40%]"><h4 class="pt-3 text-[20px]">Payment Info:</h4>
-        <h4>Status: {{ data()?.paymentInfo?.status ? data()?.paymentInfo?.status : 'Not Paid' }}</h4></div>
-    </div><br /><br />
-    <h4 class="pt-3 text-[20px] font-[600]">Order Status:</h4>
-    @if (data()?.status !== 'Processing refund' && data()?.status !== 'Refund Success') {
-      <select [value]="status()" (change)="status.set($any($event.target).value)" class="w-[200px] mt-2 border h-[35px] rounded-[5px]">
-        @for (option of orderStatusOptions(); track option) { <option [value]="option">{{ option }}</option> }
-      </select>
-    }
-    @if (data()?.status === 'Processing refund' || data()?.status === 'Refund Success') {
-      <select [value]="status()" (change)="status.set($any($event.target).value)" class="w-[200px] mt-2 border h-[35px] rounded-[5px]">
-        @for (option of refundStatusOptions(); track option) { <option [value]="option">{{ option }}</option> }
-      </select>
-    }
-    <div class="{{ styles.button }} mt-5 !bg-[#FCE1E6] !rounded-[4px] text-[#E94560] font-[600] !h-[45px] text-[18px]"
-      (click)="data()?.status !== 'Processing refund' ? orderUpdateHandler() : refundOrderUpdateHandler()">Update Status</div>
-  </div>`,
+  `,
 })
 export class ShopOrderDetailsComponent implements OnInit {
   private orderStore = inject(OrderStore);
@@ -60,30 +144,88 @@ export class ShopOrderDetailsComponent implements OnInit {
   private toast = inject(ToastService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+
   styles = styles;
   status = signal('');
-  data = computed(() => (this.orderStore.orders() || []).find((i) => i._id === this.route.snapshot.paramMap.get('id')));
+  isUpdating = signal(false);
+
+  orderId = computed(() => this.route.snapshot.paramMap.get('id') || '');
+
+  data = computed(() =>
+      (this.orderStore.orders() || []).find((i) => i._id === this.orderId())
+  );
+
   orderStatusOptions = computed(() => {
     const all = ['Processing', 'Transferred to delivery partner', 'Shipping', 'Received', 'On the way', 'Delivered'];
-    return all.slice(all.indexOf(this.data()?.status as string));
+    const current = this.data()?.status;
+    const idx = current ? all.indexOf(current) : 0;
+    return all.slice(idx === -1 ? 0 : idx);
   });
+
   refundStatusOptions = computed(() => {
     const all = ['Processing refund', 'Refund Success'];
-    return all.slice(all.indexOf(this.data()?.status as string));
+    const current = this.data()?.status;
+    const idx = current ? all.indexOf(current) : 0;
+    return all.slice(idx === -1 ? 0 : idx);
   });
-  ngOnInit() { const s = this.sellerStore.seller(); if (s) this.orderStore.getAllOrdersOfShop(s._id); }
-  async orderUpdateHandler() {
-    try {
-      await this.api.put(`${server}/order/update-order-status/${this.route.snapshot.paramMap.get('id')}`, { status: this.status() }, true);
-      this.toast.success('Order updated!'); this.router.navigate(['/dashboard-orders']);
-    } catch (e) { this.toast.error(this.api.message(e)); }
+
+  constructor() {
+    // 1. Reactive check: fetch shop orders as soon as seller resolves
+    effect(() => {
+      const seller = this.sellerStore.seller();
+      if (seller?._id && (!this.orderStore.orders() || this.orderStore.orders().length === 0)) {
+        this.orderStore.getAllOrdersOfShop(seller._id);
+      }
+    });
+
+    // 2. Synchronize selected dropdown status whenever order data becomes available
+    effect(() => {
+      const currentOrder = this.data();
+      if (currentOrder?.status && !this.status()) {
+        this.status.set(currentOrder.status);
+      }
+    });
   }
-  async refundOrderUpdateHandler() {
-    const s = this.sellerStore.seller();
+
+  async ngOnInit() {
+    const seller = this.sellerStore.seller();
+    if (seller?._id) {
+      this.orderStore.getAllOrdersOfShop(seller._id);
+    }
+  }
+
+  async handleStatusUpdate() {
+    const id = this.orderId();
+    const currentStatus = this.data()?.status;
+    const newStatus = this.status();
+
+    if (!newStatus) {
+      this.toast.error('Please choose a valid status.');
+      return;
+    }
+
+    this.isUpdating.set(true);
+
     try {
-      await this.api.put(`${server}/order/order-refund-success/${this.route.snapshot.paramMap.get('id')}`, { status: this.status() }, true);
-      this.toast.success('Order updated!');
-      if (s) this.orderStore.getAllOrdersOfShop(s._id);
-    } catch (e) { this.toast.error(this.api.message(e)); }
+      if (currentStatus === 'Processing refund' || newStatus === 'Refund Success') {
+        await this.api.put(`${server}/order/order-refund-success/${id}`, { status: newStatus }, true);
+      } else {
+        await this.api.put(`${server}/order/update-order-status/${id}`, { status: newStatus }, true);
+      }
+
+      this.toast.success('Order status updated successfully!');
+
+      // Re-fetch orders for the current seller to synchronize store
+      const seller = this.sellerStore.seller();
+      if (seller?._id) {
+        await this.orderStore.getAllOrdersOfShop(seller._id);
+      }
+
+      this.router.navigate(['/dashboard-orders']);
+    } catch (e: any) {
+      this.toast.error(this.api.message(e));
+    } finally {
+      this.isUpdating.set(false);
+    }
   }
 }

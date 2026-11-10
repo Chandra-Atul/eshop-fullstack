@@ -18,7 +18,16 @@ import { footerSupportLinks, footerProductLinks, footercompanyLinks } from '../.
     </div>
     <div class="grid grid-cols-1 sm:gird-cols-3 lg:grid-cols-4 gap-6 sm:px-8 px-5 py-16 sm:text-center">
       <ul class="px-5 text-center sm:text-start flex sm:block flex-col items-center">
-        <img src="https://shopo.quomodothemes.website/assets/images/logo.svg" alt="" style="filter: brightness(0) invert(1)" /><br />
+        <a routerLink="/" class="flex items-center gap-2 select-none">
+          <div class="w-9 h-9 rounded-lg bg-white flex items-center justify-center">
+            <svg class="w-5 h-5 text-[#3321c8]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+          </div>
+          <span class="text-2xl font-black tracking-tight text-white leading-none">
+            Shop<span class="text-teal-400">O</span>
+          </span>
+        </a>
         <p>The home and elements needeed to create beatiful products.</p>
         <div class="flex items-center mt-[15px]">
           <app-icon name="AiFillFacebook" [size]="25" class="cursor-pointer" />

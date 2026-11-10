@@ -289,27 +289,40 @@ export class ShopLoginComponent {
           true
       );
 
-      // Persist seller token in storage
+      // 1. Persist the seller token in storage
       const token = res?.token || res?.seller_token;
       if (token && typeof window !== 'undefined') {
         localStorage.setItem('seller_token', token);
       }
 
-      // Check whether backend returned object under 'seller' or 'shop'
-      const sellerData = res?.seller || res?.shop;
+      // 2. Identify seller data: match res.user, res.seller, or res.shop
+      const rawSeller =
+          res?.user ||
+          res?.seller ||
+          res?.shop ||
+          res?.data?.user ||
+          res?.data?.seller ||
+          res?.data?.shop ||
+          (res?._id || res?.id ? res : null);
 
-      if (sellerData) {
-        this.sellerStore.seller.set(sellerData);
+      if (rawSeller && (rawSeller._id || rawSeller.id)) {
+        const normalizedSeller = {
+          ...rawSeller,
+          _id: rawSeller._id || String(rawSeller.id),
+        };
+
+        console.log('hello: Seller profile recognized:', normalizedSeller);
+        this.sellerStore.seller.set(normalizedSeller);
         this.sellerStore.isSeller.set(true);
         this.sellerStore.isLoading.set(false);
       } else {
+        console.log('hi: No seller profile in login response. Fetching via loadSeller()...');
         await this.sellerStore.loadSeller();
       }
 
       this.toast.success('Login Success!');
       this.isLoading.set(false);
 
-      // Navigate directly to dashboard without back-button trap
       await this.router.navigate(['/dashboard'], { replaceUrl: true });
     } catch (err: any) {
       this.isLoading.set(false);

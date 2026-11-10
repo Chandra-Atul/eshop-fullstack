@@ -12,70 +12,204 @@ import { server } from '../../config';
   selector: 'app-checkout',
   standalone: true,
   imports: [FormsModule],
-  template: `<div class="w-full flex flex-col items-center py-8">
-    <div class="w-[90%] 1000px:w-[70%] block 800px:flex">
-      <div class="w-full 800px:w-[65%]">
-        <div class="w-full 800px:w-[95%] bg-white rounded-md p-5 pb-8">
-          <h5 class="text-[18px] font-[500]">Shipping Address</h5><br />
-          <form>
-            <div class="w-full flex pb-3">
-              <div class="w-[50%]"><label class="block pb-2">Full Name</label>
-                <input type="text" [value]="user()?.name" required class="{{ styles.input }} !w-[95%]" /></div>
-              <div class="w-[50%]"><label class="block pb-2">Email Address</label>
-                <input type="email" [value]="user()?.email" required class="{{ styles.input }}" /></div>
-            </div>
-            <div class="w-full flex pb-3">
-              <div class="w-[50%]"><label class="block pb-2">Phone Number</label>
-                <input type="number" required [value]="user()?.phoneNumber" class="{{ styles.input }} !w-[95%]" /></div>
-              <div class="w-[50%]"><label class="block pb-2">Zip Code</label>
-                <input type="number" [ngModel]="zipCode()" (ngModelChange)="zipCode.set($event)" name="zipCode" required class="{{ styles.input }}" /></div>
-            </div>
-            <div class="w-full flex pb-3">
-              <div class="w-[50%]"><label class="block pb-2">Country</label>
-                <select class="w-[95%] border h-[40px] rounded-[5px]" [value]="country()" (change)="country.set($any($event.target).value)">
-                  <option class="block pb-2" value="">Choose your country</option>
-                  @for (item of countries; track item.isoCode) { <option [value]="item.isoCode">{{ item.name }}</option> }
-                </select></div>
-              <div class="w-[50%]"><label class="block pb-2">City</label>
-                <select class="w-[95%] border h-[40px] rounded-[5px]" [value]="city()" (change)="city.set($any($event.target).value)">
-                  <option class="block pb-2" value="">Choose your City</option>
-                  @for (item of states(); track item.isoCode) { <option [value]="item.isoCode">{{ item.name }}</option> }
-                </select></div>
-            </div>
-            <div class="w-full flex pb-3">
-              <div class="w-[50%]"><label class="block pb-2">Address1</label>
-                <input type="text" required [ngModel]="address1()" (ngModelChange)="address1.set($event)" name="address1" class="{{ styles.input }} !w-[95%]" /></div>
-              <div class="w-[50%]"><label class="block pb-2">Address2</label>
-                <input type="text" [ngModel]="address2()" (ngModelChange)="address2.set($event)" name="address2" required class="{{ styles.input }}" /></div>
-            </div>
-            <div></div>
-          </form>
-          <h5 class="text-[18px] cursor-pointer inline-block" (click)="userInfo.set(!userInfo())">Choose From saved address</h5>
-          @if (userInfo()) {
-            <div>@if (user()) {
-              @for (item of user()!.addresses || []; track item._id) {
-                <div class="w-full flex mt-1"><input type="checkbox" class="mr-3" [value]="item.addressType" (click)="pickAddress(item)" /><h2>{{ item.addressType }}</h2></div>
-              }
-            }</div>
-          }
+  template: `
+    <div class="w-full flex flex-col items-center py-8">
+      <div class="w-[90%] 1000px:w-[70%] block 800px:flex gap-6">
+        
+        <!-- Left Column: Shipping Form -->
+        <div class="w-full 800px:w-[65%]">
+          <div class="w-full bg-white rounded-md p-6 pb-8 shadow-sm border border-gray-100">
+            <h5 class="text-[18px] font-[600] text-gray-800 border-b pb-3">Shipping Address</h5>
+            <form class="mt-4">
+              <div class="w-full flex pb-3 gap-3">
+                <div class="w-[50%]">
+                  <label class="block pb-2 text-sm text-gray-600">Full Name</label>
+                  <input
+                    type="text"
+                    [value]="user()?.name || ''"
+                    class="{{ styles.input }} !w-full"
+                    placeholder="Full Name"
+                  />
+                </div>
+                <div class="w-[50%]">
+                  <label class="block pb-2 text-sm text-gray-600">Email Address</label>
+                  <input
+                    type="email"
+                    [value]="user()?.email || ''"
+                    class="{{ styles.input }} !w-full"
+                    placeholder="Email Address"
+                  />
+                </div>
+              </div>
+
+              <div class="w-full flex pb-3 gap-3">
+                <div class="w-[50%]">
+                  <label class="block pb-2 text-sm text-gray-600">Phone Number</label>
+                  <input
+                    type="tel"
+                    [value]="user()?.phoneNumber || ''"
+                    class="{{ styles.input }} !w-full"
+                    placeholder="Phone Number"
+                  />
+                </div>
+                <div class="w-[50%]">
+                  <label class="block pb-2 text-sm text-gray-600">Zip Code</label>
+                  <input
+                    type="text"
+                    [ngModel]="zipCode()"
+                    (ngModelChange)="zipCode.set($event)"
+                    name="zipCode"
+                    required
+                    class="{{ styles.input }} !w-full"
+                    placeholder="Pin / Zip code"
+                  />
+                </div>
+              </div>
+
+              <div class="w-full flex pb-3 gap-3">
+                <div class="w-[50%]">
+                  <label class="block pb-2 text-sm text-gray-600">Country</label>
+                  <select
+                    class="w-full border h-[40px] rounded-[5px] px-2 text-gray-700 bg-white"
+                    [value]="country()"
+                    (change)="onCountryChange($event)"
+                  >
+                    <option value="">Choose your country</option>
+                    @for (item of countries; track item.isoCode) {
+                      <option [value]="item.isoCode">{{ item.name }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="w-[50%]">
+                  <label class="block pb-2 text-sm text-gray-600">State / City</label>
+                  <select
+                    class="w-full border h-[40px] rounded-[5px] px-2 text-gray-700 bg-white"
+                    [value]="city()"
+                    (change)="city.set($any($event.target).value)"
+                  >
+                    <option value="">Choose State / City</option>
+                    @for (item of states(); track item.isoCode) {
+                      <option [value]="item.name">{{ item.name }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <div class="w-full flex pb-3 gap-3">
+                <div class="w-[50%]">
+                  <label class="block pb-2 text-sm text-gray-600">Address Line 1</label>
+                  <input
+                    type="text"
+                    required
+                    [ngModel]="address1()"
+                    (ngModelChange)="address1.set($event)"
+                    name="address1"
+                    placeholder="House/Flat No, Building, Street"
+                    class="{{ styles.input }} !w-full"
+                  />
+                </div>
+                <div class="w-[50%]">
+                  <label class="block pb-2 text-sm text-gray-600">Address Line 2 (Optional)</label>
+                  <input
+                    type="text"
+                    [ngModel]="address2()"
+                    (ngModelChange)="address2.set($event)"
+                    name="address2"
+                    placeholder="Landmark, Area"
+                    class="{{ styles.input }} !w-full"
+                  />
+                </div>
+              </div>
+            </form>
+
+            <h5
+              class="text-[15px] text-[#3321c8] font-medium cursor-pointer inline-block mt-2 hover:underline"
+              (click)="userInfo.set(!userInfo())"
+            >
+              Choose From saved address
+            </h5>
+
+            @if (userInfo()) {
+              <div class="mt-3 p-3 bg-gray-50 rounded border border-gray-200">
+                @if (user()) {
+                  @for (item of user()!.addresses || []; track (item._id || item.id || $index)) {
+                    <div class="w-full flex items-center my-1.5 cursor-pointer" (click)="pickAddress(item)">
+                      <input
+                        type="radio"
+                        name="savedAddr"
+                        class="mr-3 cursor-pointer text-[#3321c8]"
+                      />
+                      <span class="text-sm font-medium text-gray-800">{{ item.addressType }}: </span>
+                      <span class="text-sm text-gray-600 ml-1 truncate">{{ item.address1 }}, {{ item.city }}</span>
+                    </div>
+                  }
+                  @if (!user()!.addresses || user()!.addresses.length === 0) {
+                    <p class="text-xs text-gray-500">No saved addresses found.</p>
+                  }
+                }
+              </div>
+            }
+          </div>
         </div>
+
+        <!-- Right Column: Order Summary -->
+        <div class="w-full 800px:w-[35%] 800px:mt-0 mt-8">
+          <div class="w-full bg-white rounded-md p-6 pb-8 shadow-sm border border-gray-100">
+            <h5 class="text-[18px] font-[600] text-gray-800 border-b pb-3 mb-4">Order Summary</h5>
+            
+            <div class="flex justify-between items-center py-2">
+              <h3 class="text-[15px] text-gray-500">Subtotal:</h3>
+              <h5 class="text-[16px] font-[600] text-gray-800">₹ {{ subTotalPrice() }}</h5>
+            </div>
+
+            <div class="flex justify-between items-center py-2">
+              <h3 class="text-[15px] text-gray-500">Shipping:</h3>
+              <h5 class="text-[16px] font-[600] text-gray-800">₹ {{ shipping().toFixed(2) }}</h5>
+            </div>
+
+            <div class="flex justify-between items-center py-2 border-b pb-3">
+              <h3 class="text-[15px] text-gray-500">Discount:</h3>
+              <h5 class="text-[16px] font-[600] text-green-600">
+                {{ discountPrice() ? '- ₹ ' + discountPrice() : '-' }}
+              </h5>
+            </div>
+
+            <div class="flex justify-between items-center pt-3">
+              <h3 class="text-[16px] font-bold text-gray-900">Total:</h3>
+              <h5 class="text-[20px] font-[700] text-[#f63b60]">₹ {{ totalPrice() }}</h5>
+            </div>
+
+            <!-- Coupon Code -->
+            <form (ngSubmit)="handleSubmit($event)" class="mt-6">
+              <input
+                type="text"
+                class="{{ styles.input }} !w-full h-[40px] pl-3"
+                placeholder="Coupon code"
+                [ngModel]="couponCode()"
+                (ngModelChange)="couponCode.set($event)"
+                name="couponCode"
+              />
+              <button
+                class="w-full h-[40px] border border-[#f63b60] text-center text-[#f63b60] hover:bg-[#f63b60] hover:text-white transition-colors rounded-[5px] mt-3 cursor-pointer font-medium"
+                type="submit"
+              >
+                Apply code
+              </button>
+            </form>
+          </div>
+        </div>
+
       </div>
-      <div class="w-full 800px:w-[35%] 800px:mt-0 mt-8">
-        <div class="w-full bg-[#fff] rounded-md p-5 pb-8">
-          <div class="flex justify-between"><h3 class="text-[16px] font-[400] text-[#000000a4]">subtotal:</h3><h5 class="text-[18px] font-[600]">&#36;{{ subTotalPrice() }}</h5></div><br />
-          <div class="flex justify-between"><h3 class="text-[16px] font-[400] text-[#000000a4]">shipping:</h3><h5 class="text-[18px] font-[600]">&#36;{{ shipping().toFixed(2) }}</h5></div><br />
-          <div class="flex justify-between border-b pb-3"><h3 class="text-[16px] font-[400] text-[#000000a4]">Discount:</h3>
-            <h5 class="text-[18px] font-[600]">- {{ discountPercentenge() ? '$' + discountPercentenge() : '' }}</h5></div>
-          <h5 class="text-[18px] font-[600] text-end pt-3">&#36;{{ totalPrice() }}</h5><br />
-          <form (ngSubmit)="handleSubmit($event)">
-            <input type="text" class="{{ styles.input }} h-[40px] pl-2" placeholder="Coupoun code" [ngModel]="couponCode()" (ngModelChange)="couponCode.set($event)" name="couponCode" required />
-            <input class="w-full h-[40px] border border-[#f63b60] text-center text-[#f63b60] rounded-[3px] mt-8 cursor-pointer" required value="Apply code" type="submit" />
-          </form>
-        </div>
+
+      <!-- Action Button -->
+      <div
+        class="{{ styles.button }} !bg-[#3321c8] hover:!bg-[#2617a2] w-[180px] 800px:w-[280px] !h-[48px] mt-10 rounded-xl cursor-pointer flex items-center justify-center shadow transition-all active:scale-95"
+        (click)="paymentSubmit()"
+      >
+        <h5 class="text-white text-[16px] font-semibold">Go to Payment</h5>
       </div>
     </div>
-    <div class="{{ styles.button }} w-[150px] 800px:w-[280px] mt-10" (click)="paymentSubmit()"><h5 class="text-white">Go to Payment</h5></div>
-  </div>`,
+  `,
 })
 export class CheckoutComponent implements OnInit {
   private userStore = inject(UserStore);
@@ -83,52 +217,134 @@ export class CheckoutComponent implements OnInit {
   private api = inject(ApiService);
   private toast = inject(ToastService);
   private router = inject(Router);
+
   styles = styles;
   user = this.userStore.user;
+
   countries = Country.getAllCountries();
-  country = signal(''); city = signal(''); userInfo = signal(false);
-  address1 = signal(''); address2 = signal(''); zipCode = signal<any>(null);
-  couponCode = signal(''); couponCodeData = signal<any>(null); discountPrice = signal<any>(null);
+  country = signal('IN'); // Defaults to India
+  city = signal('Karnataka');
+  userInfo = signal(false);
+
+  address1 = signal('Hinjewadi phase 3');
+  address2 = signal('');
+  zipCode = signal<any>('411057');
+
+  couponCode = signal('');
+  couponCodeData = signal<any>(null);
+  discountPrice = signal<number>(0);
+
   states = computed(() => (this.country() ? State.getStatesOfCountry(this.country()) : []));
-  subTotalPrice = computed(() => this.cartStore.cart().reduce((acc, item) => acc + item.qty * item.discountPrice, 0));
-  shipping = computed(() => this.subTotalPrice() * 0.1);
-  discountPercentenge = computed(() => (this.couponCodeData() ? this.discountPrice() : ''));
-  totalPrice = computed(() => this.couponCodeData()
-    ? (this.subTotalPrice() + this.shipping() - this.discountPercentenge()).toFixed(2)
-    : (this.subTotalPrice() + this.shipping()).toFixed(2));
-  ngOnInit() { window.scrollTo(0, 0); }
-  pickAddress(item: any) {
-    this.address1.set(item.address1); this.address2.set(item.address2); this.zipCode.set(item.zipCode);
-    this.country.set(item.country); this.city.set(item.city);
-  }
-  paymentSubmit() {
-    if (this.address1() === '' || this.address2() === '' || this.zipCode() === null || this.country() === '' || this.city() === '') {
-      this.toast.error('Please choose your delivery address!');
-    } else {
-      const shippingAddress = { address1: this.address1(), address2: this.address2(), zipCode: this.zipCode(), country: this.country(), city: this.city() };
-      const orderData = { cart: this.cartStore.cart(), totalPrice: this.totalPrice(), subTotalPrice: this.subTotalPrice(), shipping: this.shipping(), discountPrice: this.discountPercentenge(), shippingAddress, user: this.user() };
-      localStorage.setItem('latestOrder', JSON.stringify(orderData));
-      this.router.navigate(['/payment']);
+
+  subTotalPrice = computed(() => {
+    const cart = this.cartStore.cart() || [];
+    return cart.reduce((acc, item: any) => {
+      const price = Number(item.discountPrice ?? item.price ?? 0);
+      const qty = Number(item.qty) || 1;
+      return acc + (price * qty);
+    }, 0);
+  });
+
+  shipping = computed(() => {
+    const sub = this.subTotalPrice();
+    return sub > 500 ? 0 : 50;
+  });
+
+  totalPrice = computed(() => {
+    const total = this.subTotalPrice() + this.shipping() - this.discountPrice();
+    return Math.max(0, total).toFixed(2);
+  });
+
+  ngOnInit() {
+    window.scrollTo(0, 0);
+    // Auto-populate from user if available
+    const u: any = this.user();
+    if (u?.addresses && u.addresses.length > 0) {
+      const defaultAddr = u.addresses.find((a: any) => a.isDefault) || u.addresses[0];
+      this.pickAddress(defaultAddr);
     }
   }
+
+  onCountryChange(event: Event) {
+    const val = (event.target as HTMLSelectElement).value;
+    this.country.set(val);
+    this.city.set('');
+  }
+
+  pickAddress(item: any) {
+    this.address1.set(item.address1 || '');
+    this.address2.set(item.address2 || '');
+    this.zipCode.set(item.zipCode || '');
+    this.country.set(item.country || 'IN');
+    this.city.set(item.city || '');
+  }
+
+  paymentSubmit() {
+    // Address2 is now optional: only validate required fields
+    if (!this.address1() || !this.zipCode() || !this.country() || !this.city()) {
+      this.toast.error('Please enter Address, City, Country, and Zip Code!');
+      return;
+    }
+
+    const shippingAddress = {
+      address1: this.address1(),
+      address2: this.address2() || '',
+      zipCode: this.zipCode(),
+      country: this.country(),
+      city: this.city(),
+    };
+
+    const orderData = {
+      cart: this.cartStore.cart() || [],
+      totalPrice: this.totalPrice(),
+      subTotalPrice: this.subTotalPrice(),
+      shipping: this.shipping(),
+      discountPrice: this.discountPrice(),
+      shippingAddress,
+      user: this.user(),
+    };
+
+    localStorage.setItem('latestOrder', JSON.stringify(orderData));
+    this.router.navigate(['/payment']);
+  }
+
   async handleSubmit(e: Event) {
     e.preventDefault();
+    if (!this.couponCode().trim()) {
+      this.toast.error('Enter a valid coupon code');
+      return;
+    }
+
     try {
       const res: any = await this.api.get(`${server}/coupon/get-coupon-value/${this.couponCode()}`);
-      const shopId = res.couponCode?.shopId;
-      const couponCodeValue = res.couponCode?.value;
-      if (res.couponCode !== null) {
-        const cart = this.cartStore.cart();
-        const isCouponValid = cart.filter((item: any) => item.shopId === shopId);
-        if (isCouponValid.length === 0) { this.toast.error('Coupon code is not valid for this shop'); this.couponCode.set(''); }
-        else {
-          const eligiblePrice = isCouponValid.reduce((acc, item) => acc + item.qty * item.discountPrice, 0);
-          this.discountPrice.set((eligiblePrice * couponCodeValue) / 100);
-          this.couponCodeData.set(res.couponCode);
+      if (res?.couponCode) {
+        const coupon = res.couponCode;
+        const cart = this.cartStore.cart() || [];
+        const eligibleItems = cart.filter((item: any) => String(item.shopId || item.shop?._id) === String(coupon.shopId));
+
+        if (eligibleItems.length === 0) {
+          this.toast.error('Coupon code is not valid for the items in your cart');
           this.couponCode.set('');
+          return;
         }
+
+        const eligiblePrice = eligibleItems.reduce((acc: number, item: any) => {
+          const price = Number(item.discountPrice ?? item.price ?? 0);
+          const qty = Number(item.qty) || 1;
+          return acc + (price * qty);
+        }, 0);
+
+        const discount = Math.round((eligiblePrice * Number(coupon.value)) / 100);
+        this.discountPrice.set(discount);
+        this.couponCodeData.set(coupon);
+        this.couponCode.set('');
+        this.toast.success('Coupon applied successfully!');
+      } else {
+        this.toast.error("Coupon code doesn't exist!");
+        this.couponCode.set('');
       }
-      if (res.couponCode === null) { this.toast.error("Coupon code doesn't exists!"); this.couponCode.set(''); }
-    } catch (error) { this.toast.error(this.api.message(error)); }
+    } catch (error) {
+      this.toast.error(this.api.message(error));
+    }
   }
 }

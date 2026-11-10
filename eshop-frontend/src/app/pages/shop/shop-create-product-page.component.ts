@@ -3,6 +3,31 @@ import { DashboardHeaderComponent } from '../../components/layout/headers';
 import { DashboardSideBarComponent } from '../../components/layout/sidebars';
 import { CreateProductComponent } from '../../components/shop/forms';
 
+@Component({
+    selector: 'app-shop-create-product-page',
+    standalone: true,
+    imports: [
+        DashboardHeaderComponent,
+        DashboardSideBarComponent,
+        CreateProductComponent,
+    ],
+    template: `
+    <div class="min-h-screen bg-gray-50 flex flex-col">
+      <app-dashboard-header />
 
-@Component({ selector: 'app-shop-create-product-page', standalone: true, imports: [DashboardHeaderComponent, DashboardSideBarComponent, CreateProductComponent], template: `<div><app-dashboard-header /><div class="flex items-center justify-between w-full"><div class="w-[80px] 800px:w-[330px]"><app-dashboard-side-bar [active]="4" /></div><div class="w-full justify-center flex"><app-create-product /></div></div></div>` })
+      <div class="flex items-start w-full flex-1">
+        <!-- Sidebar Column -->
+        <div class="w-[80px] 800px:w-[330px] shrink-0 sticky top-0">
+          <app-dashboard-side-bar [active]="4" />
+        </div>
+
+        <!-- Form Content Column -->
+        <div class="flex-1 flex justify-center py-6 px-4">
+          <!-- Added w-full flex justify-center to the host element -->
+          <app-create-product class="w-full flex justify-center" />
+        </div>
+      </div>
+    </div>
+  `,
+})
 export class ShopCreateProductPageComponent {}

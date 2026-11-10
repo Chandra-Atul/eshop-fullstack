@@ -17,7 +17,6 @@ export class UserStore {
   readonly error = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
 
-  // Tracks ongoing user initialization request
   private userPromise: Promise<boolean> | null = null;
 
   loadUser(): Promise<boolean> {
@@ -61,6 +60,7 @@ export class UserStore {
     } catch (e) {
       this.loading.set(false);
       this.error.set(err(this.api, e));
+      throw e;
     }
   }
 
@@ -69,11 +69,12 @@ export class UserStore {
       this.addressloading.set(true);
       const data = await this.api.put(`${server}/user/update-user-addresses`, { country, city, address1, address2, zipCode, addressType }, true);
       this.addressloading.set(false);
-      this.successMessage.set('User address updated succesfully!');
+      this.successMessage.set('User address updated successfully!');
       this.user.set(data.user);
     } catch (e) {
       this.addressloading.set(false);
       this.error.set(err(this.api, e));
+      throw e;
     }
   }
 
@@ -82,11 +83,12 @@ export class UserStore {
       this.addressloading.set(true);
       const data = await this.api.delete(`${server}/user/delete-user-address/${id}`, true);
       this.addressloading.set(false);
-      this.successMessage.set('User deleted successfully!');
+      this.successMessage.set('Address deleted successfully!');
       this.user.set(data.user);
     } catch (e) {
       this.addressloading.set(false);
       this.error.set(err(this.api, e));
+      throw e;
     }
   }
 
@@ -99,6 +101,7 @@ export class UserStore {
     } catch (e) {
       this.usersLoading.set(false);
       this.error.set(err(this.api, e));
+      throw e;
     }
   }
 
@@ -130,18 +133,26 @@ export class SellerStore {
     this.isLoading.set(true);
     this.sellerPromise = (async () => {
       try {
-        const data = await this.api.get(`${server}/shop/getSeller`, true);
-        if (data && data.seller) {
-          this.seller.set(data.seller);
+        const data: any = await this.api.get(`${server}/shop/getSeller`, true);
+        const raw = data?.user || data?.seller || data?.shop || (data?.id || data?._id ? data : null);
+
+        if (raw && (raw.id || raw._id)) {
+          const normalized: any = {
+            ...raw,
+            _id: raw._id || String(raw.id),
+          };
+          this.seller.set(normalized);
           this.isSeller.set(true);
           this.isLoading.set(false);
           return true;
         } else {
+          this.seller.set(null);
           this.isSeller.set(false);
           this.isLoading.set(false);
           return false;
         }
       } catch (e) {
+        this.seller.set(null);
         this.isLoading.set(false);
         this.error.set(err(this.api, e));
         this.isSeller.set(false);
@@ -163,6 +174,7 @@ export class SellerStore {
     } catch (e) {
       this.isLoading.set(false);
       this.error.set(err(this.api, e));
+      throw e;
     }
   }
 
@@ -174,7 +186,7 @@ export class SellerStore {
 @Injectable({ providedIn: 'root' })
 export class ProductStore {
   private api = inject(ApiService);
-  readonly isLoading = signal<boolean | undefined>(true);
+  readonly isLoading = signal<boolean | undefined>(false);
   readonly product = signal<Product | null>(null);
   readonly products = signal<Product[]>([]);
   readonly allProducts = signal<Product[]>([]);
@@ -182,31 +194,70 @@ export class ProductStore {
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
 
-  async createProduct(name: string, description: string, category: string, tags: string, originalPrice: number, discountPrice: number, stock: number, shopId: string, images: any) {
+  async createProduct(
+      name: string,
+      description: string,
+      category: string,
+      tags: string,
+      originalPrice: number,
+      discountPrice: number,
+      stock: number,
+      shopId: string,
+      images: any
+  ) {
     try {
       this.isLoading.set(true);
-      const data = await this.api.post(`${server}/product/create-product`, { name, description, category, tags, originalPrice, discountPrice, stock, shopId, images });
+      this.error.set(null);
+      this.success.set(undefined);
+
+      const parsedShopId = isNaN(Number(shopId)) ? shopId : Number(shopId);
+      const payload = {
+        name,
+        description,
+        category,
+        tags,
+        originalPrice,
+        discountPrice,
+        stock,
+        shopId: parsedShopId,
+        shop: { id: parsedShopId, _id: shopId },
+        images,
+      };
+
+      const data = await this.api.post(`${server}/product/create-product`, payload, true);
+
       this.isLoading.set(false);
-      this.product.set(data.product);
+      this.product.set(data.product || data);
       this.success.set(true);
       return data;
     } catch (e) {
       this.isLoading.set(false);
-      this.error.set(err(this.api, e));
+      const errorMsg = err(this.api, e);
+      this.error.set(errorMsg);
       this.success.set(false);
-      return null;
+      throw e;
     }
   }
 
   async getAllProductsShop(id: string) {
     try {
       this.isLoading.set(true);
-      const data = await this.api.get(`${server}/product/get-all-products-shop/${id}`);
+      const data: any = await this.api.get(`${server}/product/get-all-products-shop/${id}`);
       this.isLoading.set(false);
-      this.products.set(data.products);
+
+      // Extract whichever key the backend provides
+      const list =
+          data?.products ||
+          data?.product ||
+          data?.allProducts ||
+          data?.data ||
+          (Array.isArray(data) ? data : []);
+
+      this.products.set(list);
     } catch (e) {
       this.isLoading.set(false);
       this.error.set(err(this.api, e));
+      throw e;
     }
   }
 
@@ -219,6 +270,7 @@ export class ProductStore {
     } catch (e) {
       this.isLoading.set(false);
       this.error.set(err(this.api, e));
+      throw e;
     }
   }
 
@@ -227,10 +279,11 @@ export class ProductStore {
       this.isLoading.set(true);
       const data = await this.api.get(`${server}/product/get-all-products`);
       this.isLoading.set(false);
-      this.allProducts.set(data.products);
+      this.allProducts.set(data.products || []);
     } catch (e) {
       this.isLoading.set(false);
       this.error.set(err(this.api, e));
+      throw e;
     }
   }
 
@@ -242,7 +295,7 @@ export class ProductStore {
 @Injectable({ providedIn: 'root' })
 export class EventStore {
   private api = inject(ApiService);
-  readonly isLoading = signal<boolean | undefined>(true);
+  readonly isLoading = signal<boolean | undefined>(false);
   readonly event = signal<EventModel | null>(null);
   readonly events = signal<EventModel[]>([]);
   readonly allEvents = signal<EventModel[]>([]);
@@ -253,16 +306,27 @@ export class EventStore {
   async createEvent(data: any) {
     try {
       this.isLoading.set(true);
-      const res: any = await this.api.post(`${server}/event/create-event`, data);
+      this.error.set(null);
+      this.success.set(undefined);
+
+      const parsedShopId = isNaN(Number(data.shopId)) ? data.shopId : Number(data.shopId);
+      const payload = {
+        ...data,
+        shopId: parsedShopId,
+        shop: { id: parsedShopId, _id: data.shopId },
+      };
+
+      const res: any = await this.api.post(`${server}/event/create-event`, payload, true);
       this.isLoading.set(false);
-      this.event.set(res.event);
+      this.event.set(res.event || res);
       this.success.set(true);
       return res;
     } catch (e) {
       this.isLoading.set(false);
-      this.error.set(err(this.api, e));
+      const errorMsg = err(this.api, e);
+      this.error.set(errorMsg);
       this.success.set(false);
-      return null;
+      throw e;
     }
   }
 
@@ -271,10 +335,11 @@ export class EventStore {
       this.isLoading.set(true);
       const data = await this.api.get(`${server}/event/get-all-events/${id}`);
       this.isLoading.set(false);
-      this.events.set(data.events);
+      this.events.set(data.events || []);
     } catch (e) {
       this.isLoading.set(false);
       this.error.set(err(this.api, e));
+      throw e;
     }
   }
 
@@ -287,6 +352,7 @@ export class EventStore {
     } catch (e) {
       this.isLoading.set(false);
       this.error.set(err(this.api, e));
+      throw e;
     }
   }
 
@@ -295,10 +361,11 @@ export class EventStore {
       this.isLoading.set(true);
       const data = await this.api.get(`${server}/event/get-all-events`);
       this.isLoading.set(false);
-      this.allEvents.set(data.events);
+      this.allEvents.set(data.events || []);
     } catch (e) {
       this.isLoading.set(false);
       this.error.set(err(this.api, e));
+      throw e;
     }
   }
 
@@ -316,27 +383,33 @@ export class OrderStore {
   readonly adminOrders = signal<Order[]>([]);
   readonly error = signal<string | null>(null);
 
-  async getAllOrdersOfUser(userId: string) {
+  async getAllOrdersOfUser(userId: string | number) {
+    if (!userId || userId === 'undefined') return;
     try {
       this.isLoading.set(true);
-      const data = await this.api.get(`${server}/order/get-all-orders/${userId}`);
+      // Added 'true' so withCredentials and auth headers are included
+      const data: any = await this.api.get(`${server}/order/get-all-orders/${userId}`, true);
       this.isLoading.set(false);
-      this.orders.set(data.orders);
+      this.orders.set(data?.orders || []);
     } catch (e) {
       this.isLoading.set(false);
       this.error.set(err(this.api, e));
+      this.orders.set([]);
     }
   }
 
-  async getAllOrdersOfShop(shopId: string) {
+  async getAllOrdersOfShop(shopId: string | number) {
+    if (!shopId || shopId === 'undefined') return;
     try {
       this.isLoading.set(true);
-      const data = await this.api.get(`${server}/order/get-seller-all-orders/${shopId}`);
+      // Added 'true' so withCredentials and auth headers are included
+      const data: any = await this.api.get(`${server}/order/get-seller-all-orders/${shopId}`, true);
       this.isLoading.set(false);
-      this.orders.set(data.orders);
+      this.orders.set(data?.orders || []);
     } catch (e) {
       this.isLoading.set(false);
       this.error.set(err(this.api, e));
+      this.orders.set([]);
     }
   }
 
@@ -345,7 +418,7 @@ export class OrderStore {
       this.adminOrderLoading.set(true);
       const data = await this.api.get(`${server}/order/admin-all-orders`, true);
       this.adminOrderLoading.set(false);
-      this.adminOrders.set(data.orders);
+      this.adminOrders.set(data?.orders || []);
     } catch (e) {
       this.adminOrderLoading.set(false);
       this.error.set(err(this.api, e));
@@ -363,7 +436,7 @@ export class CartStore {
 
   private read(): CartItem[] {
     try {
-      const raw = localStorage.getItem('cartItems');
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('cartItems') : null;
       return raw ? JSON.parse(raw) : [];
     } catch {
       return [];
@@ -371,20 +444,74 @@ export class CartStore {
   }
 
   private persist() {
-    localStorage.setItem('cartItems', JSON.stringify(this.cart()));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cartItems', JSON.stringify(this.cart()));
+    }
   }
 
-  addTocart(data: CartItem) {
-    const exist = this.cart().find((i) => i._id === data._id);
-    this.cart.set(exist ? this.cart().map((i) => (i._id === exist._id ? data : i)) : [...this.cart(), data]);
-    this.persist();
-    return data;
+  /**
+   * Adds an item with the explicitly selected count.
+   * If existing: adds the exact selected amount or sets the new total.
+   */
+  addTocart(data: any, quantityToAdd: number = 1) {
+    const targetId = String(data._id || data.id);
+    const qtySelected = Number(data.qty ?? quantityToAdd ?? 1);
+    const currentList = this.cart();
+    const existIndex = currentList.findIndex((i: any) => String(i._id || i.id) === targetId);
+
+    if (existIndex > -1) {
+      const existingItem = currentList[existIndex];
+      // Increment by the selected amount rather than a hardcoded +1
+      const updatedQty = (Number(existingItem.qty) || 1) + qtySelected;
+
+      const updatedItem = {
+        ...existingItem,
+        ...data,
+        _id: targetId,
+        id: targetId,
+        qty: updatedQty,
+      };
+
+      const nextList = [...currentList];
+      nextList[existIndex] = updatedItem;
+      this.cart.set(nextList);
+      this.persist();
+      return updatedItem;
+    } else {
+      const newItem = {
+        ...data,
+        _id: targetId,
+        id: targetId,
+        qty: Math.max(1, qtySelected),
+      };
+      this.cart.set([...currentList, newItem]);
+      this.persist();
+      return newItem;
+    }
   }
 
-  removeFromCart(data: CartItem) {
-    this.cart.set(this.cart().filter((i) => i._id !== data._id));
+  updateQuantity(id: string | number, qty: number) {
+    const targetId = String(id);
+    if (qty <= 0) {
+      this.removeFromCart(targetId);
+      return;
+    }
+
+    const nextList = this.cart().map((item: any) => {
+      if (String(item._id || item.id) === targetId) {
+        return { ...item, qty };
+      }
+      return item;
+    });
+
+    this.cart.set(nextList);
     this.persist();
-    return data;
+  }
+
+  removeFromCart(dataOrId: any) {
+    const targetId = String(dataOrId?._id || dataOrId?.id || dataOrId);
+    this.cart.set(this.cart().filter((i: any) => String(i._id || i.id) !== targetId));
+    this.persist();
   }
 
   clearCart() {
@@ -392,7 +519,6 @@ export class CartStore {
     this.persist();
   }
 }
-
 @Injectable({ providedIn: 'root' })
 export class WishlistStore {
   readonly wishlist = signal<Product[]>(this.read());

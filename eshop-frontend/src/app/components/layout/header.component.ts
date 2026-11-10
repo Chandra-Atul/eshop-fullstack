@@ -17,9 +17,23 @@ import { Product } from '../../core/models';
   template: `
     <div class="{{ styles.section }}">
       <div class="hidden 800px:h-[50px] 800px:my-[20px] 800px:flex items-center justify-between">
+        <!-- Desktop Brand Logo -->
         <div>
-          <a routerLink="/"><img src="https://shopo.quomodothemes.website/assets/images/logo.svg" alt="Logo" /></a>
+          <a routerLink="/" class="flex items-center gap-2.5 select-none group">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3321c8] to-[#5b42f3] flex items-center justify-center shadow-md shadow-indigo-100 group-hover:scale-105 transition-transform">
+              <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-2xl font-black tracking-tight text-gray-900 leading-none">
+                Shop<span class="text-[#3321c8]">O</span>
+              </span>
+              <span class="text-[10px] tracking-widest uppercase font-semibold text-gray-400 mt-0.5">Marketplace</span>
+            </div>
+          </a>
         </div>
+
         <div class="w-[50%] relative">
           <input
             type="text"
@@ -31,10 +45,10 @@ import { Product } from '../../core/models';
           <app-icon name="AiOutlineSearch" [size]="30" class="absolute right-2 top-1.5 cursor-pointer" />
           @if (searchData() && searchData()!.length !== 0) {
             <div class="absolute min-h-[30vh] bg-slate-50 shadow-sm-2 z-[9] p-4 w-full left-0">
-              @for (i of searchData()!; track i._id) {
-                <a [routerLink]="['/product', i._id]">
+              @for (i of searchData()!; track (i._id || i.id)) {
+                <a [routerLink]="['/product', i._id || i.id]">
                   <div class="w-full flex items-start py-3 hover:bg-slate-100 px-2 rounded">
-                    <img [src]="i.images && i.images[0]?.url ? i.images[0].url : 'https://via.placeholder.com/40'" alt="" class="w-[40px] h-[40px] mr-[10px] object-cover rounded" />
+                    <img [src]="i.images && i.images[0]?.url ? i.images[0].url : 'https://placehold.co/40x40?text=P'" alt="" class="w-[40px] h-[40px] mr-[10px] object-cover rounded" />
                     <h1>{{ i.name }}</h1>
                   </div>
                 </a>
@@ -42,6 +56,7 @@ import { Product } from '../../core/models';
             </div>
           }
         </div>
+
         <div class="{{ styles.button }}">
           <a [routerLink]="isSeller() ? '/dashboard' : '/shop-create'">
             <h1 class="text-[#fff] flex items-center">
@@ -56,7 +71,7 @@ import { Product } from '../../core/models';
     <!-- Desktop Navigation Bar -->
     <div class="{{ active() ? 'shadow-sm fixed top-0 left-0 z-10' : '' }} transition hidden 800px:flex items-center justify-between w-full bg-[#3321c8] h-[70px]">
       <div class="{{ styles.section }} relative {{ styles.noramlFlex }} justify-between">
-        <!-- Categories Trigger without event bubbling bug -->
+        <!-- Categories Trigger -->
         <div class="relative h-[60px] mt-[10px] w-[270px] hidden 1000px:block">
           <div 
             class="h-[100%] w-full flex justify-between items-center pl-10 pr-4 bg-white font-sans text-lg font-[500] select-none rounded-t-md cursor-pointer"
@@ -128,9 +143,21 @@ import { Product } from '../../core/models';
         <div>
           <app-icon name="BiMenuAltLeft" [size]="40" class="ml-4 cursor-pointer" (click)="open.set(true)" />
         </div>
+        
+        <!-- Mobile Brand Logo -->
         <div>
-          <a routerLink="/"><img src="https://shopo.quomodothemes.website/assets/images/logo.svg" alt="" class="mt-3 cursor-pointer" /></a>
+          <a routerLink="/" class="flex items-center gap-2 mt-1">
+            <div class="w-8 h-8 rounded-lg bg-[#3321c8] flex items-center justify-center shadow-sm">
+              <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </div>
+            <span class="text-xl font-black text-gray-900 leading-none">
+              Shop<span class="text-[#3321c8]">O</span>
+            </span>
+          </a>
         </div>
+
         <div>
           <div class="relative mr-[20px] cursor-pointer" (click)="openCart.set(true)">
             <app-icon name="AiOutlineShoppingCart" [size]="30" />
@@ -169,10 +196,10 @@ import { Product } from '../../core/models';
               />
               @if (searchData() && searchData()!.length !== 0) {
                 <div class="absolute bg-[#fff] z-10 shadow w-full left-0 p-3 max-h-[50vh] overflow-y-auto">
-                  @for (i of searchData()!; track i._id) {
-                    <a [routerLink]="['/product', i._id]" (click)="open.set(false)">
+                  @for (i of searchData()!; track (i._id || i.id)) {
+                    <a [routerLink]="['/product', i._id || i.id]" (click)="open.set(false)">
                       <div class="flex items-center py-2 border-b">
-                        <img [src]="i.images && i.images[0]?.url ? i.images[0].url : 'https://via.placeholder.com/50'" alt="" class="w-[50px] h-[50px] object-cover mr-2" />
+                        <img [src]="i.images && i.images[0]?.url ? i.images[0].url : 'https://placehold.co/50x50?text=P'" alt="" class="w-[50px] h-[50px] object-cover mr-2" />
                         <h5>{{ i.name }}</h5>
                       </div>
                     </a>
@@ -241,7 +268,6 @@ export class HeaderComponent implements OnInit {
   wishlist = computed(() => this.wishlistStore.wishlist());
 
   ngOnInit() {
-    // Populate products for search if not loaded
     if (!this.productStore.allProducts() || this.productStore.allProducts().length === 0) {
       this.productStore.getAllProducts();
     }

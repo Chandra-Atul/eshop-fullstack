@@ -1,23 +1,8 @@
 import { Component, OnInit, computed, effect, inject } from '@angular/core';
-import { DataTableComponent, GridColumn } from '../../shared/data-table.component';
+import { RouterLink } from '@angular/router';
+import { IconComponent } from '../../core/icon.component';
 import { LoaderComponent } from '../layout/loader.component';
 import { OrderStore, SellerStore } from '../../core/state';
-
-const COLUMNS: GridColumn[] = [
-  { field: 'id', headerName: 'Order ID', minWidth: 150, flex: 0.7 },
-  { field: 'status', headerName: 'Status', minWidth: 130, flex: 0.7, statusColor: true },
-  { field: 'itemsQty', headerName: 'Items Qty', type: 'number', minWidth: 130, flex: 0.7 },
-  { field: 'total', headerName: 'Total', type: 'number', minWidth: 130, flex: 0.8 },
-  { field: ' ', headerName: '', flex: 1, minWidth: 150, linkPrefix: '/order', icon: 'AiOutlineArrowRight' },
-];
-
-const toRow = (orders: any[]) =>
-    orders.map((i) => ({
-      id: i._id,
-      itemsQty: (i.cart || []).reduce((acc: number, x: any) => acc + (x.qty || x.quantity || 1), 0),
-      total: 'US$ ' + (i.totalPrice ?? 0),
-      status: i.status || 'Processing',
-    }));
 
 // ==========================================
 // 1. SHOP ALL ORDERS COMPONENT
@@ -25,13 +10,74 @@ const toRow = (orders: any[]) =>
 @Component({
   selector: 'app-shop-all-orders',
   standalone: true,
-  imports: [DataTableComponent, LoaderComponent],
+  imports: [RouterLink, IconComponent, LoaderComponent],
   template: `
     @if (isLoading()) {
       <app-loader />
     } @else {
-      <div class="w-full mx-8 pt-1 mt-10 bg-white shadow-sm rounded-lg p-2">
-        <app-data-table [rows]="row()" [columns]="columns" [pageSize]="10" />
+      <div class="w-full mx-8 pt-1 mt-10 bg-white shadow-sm rounded-lg p-4 border border-gray-100">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-semibold text-gray-800">All Orders</h3>
+          <span class="text-sm text-gray-500">Total: {{ orders().length }}</span>
+        </div>
+
+        @if (orders().length > 0) {
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th class="py-3 px-4">Order ID</th>
+                  <th class="py-3 px-4">Status</th>
+                  <th class="py-3 px-4">Items Qty</th>
+                  <th class="py-3 px-4">Total</th>
+                  <th class="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 text-sm">
+                @for (order of orders(); track (order.id || order._id)) {
+                  <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="py-3 px-4 font-medium text-gray-800">
+                      #{{ order.id || order._id }}
+                    </td>
+                    <td class="py-3 px-4">
+                      <span 
+                        class="px-2.5 py-1 rounded-full text-xs font-semibold inline-block"
+                        [class.bg-green-100]="order.status === 'Delivered' || order.status === 'Succeeded'"
+                        [class.text-green-700]="order.status === 'Delivered' || order.status === 'Succeeded'"
+                        [class.bg-yellow-100]="order.status === 'Processing' || !order.status"
+                        [class.text-yellow-700]="order.status === 'Processing' || !order.status"
+                        [class.bg-red-100]="order.status === 'Refund Success' || order.status === 'Cancelled'"
+                        [class.text-red-700]="order.status === 'Refund Success' || order.status === 'Cancelled'"
+                      >
+                        {{ order.status || 'Processing' }}
+                      </span>
+                    </td>
+                    <td class="py-3 px-4 text-gray-600">
+                      {{ getItemCount(order) }}
+                    </td>
+                    <td class="py-3 px-4 font-semibold text-gray-900">
+                      ₹ {{ order.totalPrice ?? 0 }}
+                    </td>
+                    <td class="py-3 px-4 text-right">
+                      <a 
+                        [routerLink]="['/order', order.id || order._id]"
+                        class="text-indigo-600 hover:text-indigo-900 inline-flex items-center gap-1 font-medium"
+                      >
+                        Details
+                        <app-icon name="AiOutlineArrowRight" [size]="16" />
+                      </a>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="py-12 text-center">
+            <h4 class="text-gray-600 font-medium text-base">No orders found for this shop</h4>
+            <p class="text-sm text-gray-400 mt-1">Orders placed for your products will show up here.</p>
+          </div>
+        }
       </div>
     }
   `,
@@ -40,24 +86,35 @@ export class ShopAllOrdersComponent implements OnInit {
   private orderStore = inject(OrderStore);
   private sellerStore = inject(SellerStore);
 
-  columns = COLUMNS;
   isLoading = computed(() => this.orderStore.isLoading());
-  row = computed(() => toRow(this.orderStore.orders() || []));
+  orders = computed(() => this.orderStore.orders() || []);
 
   constructor() {
-    effect(() => {
-      const seller = this.sellerStore.seller();
-      if (seller?._id) {
-        this.orderStore.getAllOrdersOfShop(seller._id);
-      }
-    });
+    effect(
+        () => {
+          const seller: any = this.sellerStore.seller();
+          const shopId = seller?.id ?? seller?._id ?? seller?.shop?.id ?? seller?.shop?._id;
+          if (shopId && shopId !== 'undefined') {
+            this.orderStore.getAllOrdersOfShop(shopId);
+          }
+        },
+        { allowSignalWrites: true }
+    );
   }
 
   ngOnInit() {
-    const seller = this.sellerStore.seller();
-    if (seller?._id) {
-      this.orderStore.getAllOrdersOfShop(seller._id);
+    const seller: any = this.sellerStore.seller();
+    const shopId = seller?.id ?? seller?._id ?? seller?.shop?.id ?? seller?.shop?._id;
+    if (shopId && shopId !== 'undefined') {
+      this.orderStore.getAllOrdersOfShop(shopId);
     }
+  }
+
+  getItemCount(order: any): number {
+    return (order?.cart || []).reduce(
+        (acc: number, x: any) => acc + Number(x.qty || x.quantity || 1),
+        0
+    );
   }
 }
 
@@ -67,13 +124,72 @@ export class ShopAllOrdersComponent implements OnInit {
 @Component({
   selector: 'app-shop-all-refund-orders',
   standalone: true,
-  imports: [DataTableComponent, LoaderComponent],
+  imports: [RouterLink, IconComponent, LoaderComponent],
   template: `
     @if (isLoading()) {
       <app-loader />
     } @else {
-      <div class="w-full mx-8 pt-1 mt-10 bg-white shadow-sm rounded-lg p-2">
-        <app-data-table [rows]="row()" [columns]="columns" [pageSize]="10" />
+      <div class="w-full mx-8 pt-1 mt-10 bg-white shadow-sm rounded-lg p-4 border border-gray-100">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-semibold text-gray-800">Refund Requests</h3>
+          <span class="text-sm text-gray-500">Total: {{ refundOrders().length }}</span>
+        </div>
+
+        @if (refundOrders().length > 0) {
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th class="py-3 px-4">Order ID</th>
+                  <th class="py-3 px-4">Status</th>
+                  <th class="py-3 px-4">Items Qty</th>
+                  <th class="py-3 px-4">Total</th>
+                  <th class="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 text-sm">
+                @for (order of refundOrders(); track (order.id || order._id)) {
+                  <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="py-3 px-4 font-medium text-gray-800">
+                      #{{ order.id || order._id }}
+                    </td>
+                    <td class="py-3 px-4">
+                      <span 
+                        class="px-2.5 py-1 rounded-full text-xs font-semibold inline-block"
+                        [class.bg-amber-100]="order.status === 'Processing refund'"
+                        [class.text-amber-700]="order.status === 'Processing refund'"
+                        [class.bg-green-100]="order.status === 'Refund Success'"
+                        [class.text-green-700]="order.status === 'Refund Success'"
+                      >
+                        {{ order.status }}
+                      </span>
+                    </td>
+                    <td class="py-3 px-4 text-gray-600">
+                      {{ getItemCount(order) }}
+                    </td>
+                    <td class="py-3 px-4 font-semibold text-gray-900">
+                      ₹ {{ order.totalPrice ?? 0 }}
+                    </td>
+                    <td class="py-3 px-4 text-right">
+                      <a 
+                        [routerLink]="['/order', order.id || order._id]"
+                        class="text-indigo-600 hover:text-indigo-900 inline-flex items-center gap-1 font-medium"
+                      >
+                        Review
+                        <app-icon name="AiOutlineArrowRight" [size]="16" />
+                      </a>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="py-12 text-center">
+            <h4 class="text-gray-600 font-medium text-base">No refund requests</h4>
+            <p class="text-sm text-gray-400 mt-1">Orders with refund requests will appear here.</p>
+          </div>
+        }
       </div>
     }
   `,
@@ -82,29 +198,39 @@ export class ShopAllRefundOrdersComponent implements OnInit {
   private orderStore = inject(OrderStore);
   private sellerStore = inject(SellerStore);
 
-  columns = COLUMNS;
   isLoading = computed(() => this.orderStore.isLoading());
-  row = computed(() =>
-      toRow(
-          (this.orderStore.orders() || []).filter(
-              (i) => i.status === 'Processing refund' || i.status === 'Refund Success'
-          )
+
+  refundOrders = computed(() =>
+      (this.orderStore.orders() || []).filter(
+          (i: any) => i.status === 'Processing refund' || i.status === 'Refund Success'
       )
   );
 
   constructor() {
-    effect(() => {
-      const seller = this.sellerStore.seller();
-      if (seller?._id) {
-        this.orderStore.getAllOrdersOfShop(seller._id);
-      }
-    });
+    effect(
+        () => {
+          const seller: any = this.sellerStore.seller();
+          const shopId = seller?.id ?? seller?._id ?? seller?.shop?.id ?? seller?.shop?._id;
+          if (shopId && shopId !== 'undefined') {
+            this.orderStore.getAllOrdersOfShop(shopId);
+          }
+        },
+        { allowSignalWrites: true }
+    );
   }
 
   ngOnInit() {
-    const seller = this.sellerStore.seller();
-    if (seller?._id) {
-      this.orderStore.getAllOrdersOfShop(seller._id);
+    const seller: any = this.sellerStore.seller();
+    const shopId = seller?.id ?? seller?._id ?? seller?.shop?.id ?? seller?.shop?._id;
+    if (shopId && shopId !== 'undefined') {
+      this.orderStore.getAllOrdersOfShop(shopId);
     }
+  }
+
+  getItemCount(order: any): number {
+    return (order?.cart || []).reduce(
+        (acc: number, x: any) => acc + Number(x.qty || x.quantity || 1),
+        0
+    );
   }
 }

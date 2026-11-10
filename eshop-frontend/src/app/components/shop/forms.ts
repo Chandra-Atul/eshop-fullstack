@@ -50,8 +50,12 @@ const resizeImageToBase64 = (file: File, maxWidth = 800, maxHeight = 800): Promi
   selector: 'app-create-product',
   standalone: true,
   imports: [FormsModule, IconComponent],
+  host: {
+    class: 'w-full flex justify-center',
+    style: 'display: flex; width: 100%; justify-content: center;',
+  },
   template: `
-    <div class="w-[90%] 800px:w-[50%] bg-white shadow h-[80vh] rounded-[4px] p-6 overflow-y-auto m-auto">
+    <div class="w-full max-w-[750px] bg-white shadow-md h-[80vh] rounded-[8px] p-6 overflow-y-auto border border-gray-100">
       <h5 class="text-[28px] font-Poppins font-semibold text-center text-gray-800">Create Product</h5>
 
       <form (ngSubmit)="handleSubmit($event)" class="mt-4 space-y-4">
@@ -89,7 +93,7 @@ const resizeImageToBase64 = (file: File, maxWidth = 800, maxHeight = 800): Promi
 
         <div>
           <label class="block text-sm font-medium text-gray-700">Tags</label>
-          <input type="text" name="tags" [(ngModel)]="tags" [class]="inputClass" placeholder="e.g. fashion, summer, cotton" />
+          <input type="text" name="tags" [(ngModel)]="tags" [class]="inputClass" placeholder="e.g. fashion, summer" />
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -224,16 +228,19 @@ export class CreateProductComponent {
     this.images.update((prev) => prev.filter((_, i) => i !== index));
   }
 
-  handleSubmit(e: Event) {
+  async handleSubmit(e: Event) {
     e.preventDefault();
-    const seller = this.sellerStore.seller();
 
-    if (!seller?._id) {
-      this.toast.error('Seller session not found. Please log in again.');
+    if (!this.name.trim()) {
+      this.toast.error('Product name is required.');
       return;
     }
     if (!this.category() || this.category() === 'Choose a category') {
       this.toast.error('Please choose a valid category.');
+      return;
+    }
+    if (!this.discountPrice()) {
+      this.toast.error('Discount price is required.');
       return;
     }
     if (this.images().length === 0) {
@@ -241,18 +248,54 @@ export class CreateProductComponent {
       return;
     }
 
-    this.isLoading.set(true);
-    this.productStore.createProduct(
-        this.name,
-        this.description,
-        this.category(),
-        this.tags,
-        this.originalPrice() || 0,
-        this.discountPrice() || 0,
-        this.stock() || 0,
-        seller._id,
-        this.images()
-    );
+    let seller: any = this.sellerStore.seller();
+    if (!seller?._id && !seller?.id) {
+      await this.sellerStore.loadSeller();
+      seller = this.sellerStore.seller();
+    }
+
+    const sellerId = seller?._id || (seller?.id ? String(seller.id) : null);
+
+    if (!sellerId) {
+      console.error('Seller session not found:', seller);
+      this.toast.error('Seller session not found. Please log in again.');
+      this.router.navigate(['/shop-login']);
+      return;
+    }
+
+    try {
+      this.isLoading.set(true);
+
+      await this.productStore.createProduct(
+          this.name,
+          this.description,
+          this.category(),
+          this.tags,
+          Number(this.originalPrice()) || 0,
+          Number(this.discountPrice()) || 0,
+          Number(this.stock()) || 0,
+          sellerId,
+          this.images()
+      );
+
+      this.toast.success('Product created successfully!');
+      this.isLoading.set(false);
+
+      this.name = '';
+      this.description = '';
+      this.category.set('');
+      this.tags = '';
+      this.images.set([]);
+      this.originalPrice.set(null);
+      this.discountPrice.set(null);
+      this.stock.set(null);
+
+      await this.router.navigate(['/dashboard-products']);
+    } catch (err: any) {
+      console.error('Failed to create product:', err);
+      this.isLoading.set(false);
+      this.toast.error(err?.message || 'Failed to create product');
+    }
   }
 }
 
@@ -263,8 +306,12 @@ export class CreateProductComponent {
   selector: 'app-create-event',
   standalone: true,
   imports: [FormsModule, IconComponent],
+  host: {
+    class: 'w-full flex justify-center',
+    style: 'display: flex; width: 100%; justify-content: center;',
+  },
   template: `
-    <div class="w-[90%] 800px:w-[50%] bg-white shadow h-[80vh] rounded-[4px] p-6 overflow-y-auto m-auto">
+    <div class="w-full max-w-[750px] bg-white shadow-md h-[80vh] rounded-[8px] p-6 overflow-y-auto border border-gray-100">
       <h5 class="text-[28px] font-Poppins font-semibold text-center text-gray-800">Create Event</h5>
 
       <form (ngSubmit)="handleSubmit($event)" class="mt-4 space-y-4">
@@ -437,7 +484,6 @@ export class CreateEventComponent {
   startDateValue = () => (this.startDate() ? this.startDate()!.toISOString().slice(0, 10) : '');
   endDateValue = () => (this.endDate() ? this.endDate()!.toISOString().slice(0, 10) : '');
 
-  // Adds 3 days (3 * 86,400,000 ms) minimum event duration
   minEndDate = () =>
       this.startDate()
           ? new Date(this.startDate()!.getTime() + 3 * 86400000).toISOString().slice(0, 10)
@@ -493,16 +539,19 @@ export class CreateEventComponent {
     this.images.update((prev) => prev.filter((_, i) => i !== index));
   }
 
-  handleSubmit(e: Event) {
+  async handleSubmit(e: Event) {
     e.preventDefault();
-    const seller = this.sellerStore.seller();
 
-    if (!seller?._id) {
-      this.toast.error('Seller session not found. Please log in again.');
+    if (!this.name.trim()) {
+      this.toast.error('Event product name is required.');
       return;
     }
     if (!this.category() || this.category() === 'Choose a category') {
       this.toast.error('Please choose a valid category.');
+      return;
+    }
+    if (!this.discountPrice()) {
+      this.toast.error('Discount price is required.');
       return;
     }
     if (!this.startDate() || !this.endDate()) {
@@ -514,19 +563,56 @@ export class CreateEventComponent {
       return;
     }
 
-    this.isLoading.set(true);
-    this.eventStore.createEvent({
-      name: this.name,
-      description: this.description,
-      category: this.category(),
-      tags: this.tags,
-      originalPrice: this.originalPrice() || 0,
-      discountPrice: this.discountPrice() || 0,
-      stock: this.stock() || 0,
-      images: this.images(),
-      shopId: seller._id,
-      start_Date: this.startDate()?.toISOString(),
-      Finish_Date: this.endDate()?.toISOString(),
-    });
+    let seller: any = this.sellerStore.seller();
+    if (!seller?._id && !seller?.id) {
+      await this.sellerStore.loadSeller();
+      seller = this.sellerStore.seller();
+    }
+
+    const sellerId = seller?._id || (seller?.id ? String(seller.id) : null);
+
+    if (!sellerId) {
+      this.toast.error('Seller session not found. Please log in again.');
+      this.router.navigate(['/shop-login']);
+      return;
+    }
+
+    try {
+      this.isLoading.set(true);
+
+      await this.eventStore.createEvent({
+        name: this.name,
+        description: this.description,
+        category: this.category(),
+        tags: this.tags,
+        originalPrice: Number(this.originalPrice()) || 0,
+        discountPrice: Number(this.discountPrice()) || 0,
+        stock: Number(this.stock()) || 0,
+        images: this.images(),
+        shopId: sellerId,
+        start_Date: this.startDate()?.toISOString(),
+        Finish_Date: this.endDate()?.toISOString(),
+      });
+
+      this.toast.success('Event created successfully!');
+      this.isLoading.set(false);
+
+      this.name = '';
+      this.description = '';
+      this.category.set('');
+      this.tags = '';
+      this.images.set([]);
+      this.originalPrice.set(null);
+      this.discountPrice.set(null);
+      this.stock.set(null);
+      this.startDate.set(null);
+      this.endDate.set(null);
+
+      await this.router.navigate(['/dashboard-events']);
+    } catch (err: any) {
+      console.error('Failed to create event:', err);
+      this.isLoading.set(false);
+      this.toast.error(err?.message || 'Failed to create event');
+    }
   }
 }

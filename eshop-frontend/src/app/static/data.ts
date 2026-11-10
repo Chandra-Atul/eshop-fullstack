@@ -86,7 +86,7 @@ export const categoriesData = [
     title: "Shoes",
     subTitle: "",
     image_Url:
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQvBQPQMVNRd6TtDkGs2dCri0Y-rxKkFOiEWw&usqp=CAU",
+        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRcCv5k9MOeIOX7ML4lB1MXGGLUwM3wohJ9kSDHJcsmw0AM0xHY-ttb0LY&s=10",
   },
   {
     id: 6,
@@ -256,7 +256,7 @@ export const productData = [
     image_Url: [
       {
         public_id: "test",
-        url: "https://mirzacdns3.s3.ap-south-1.amazonaws.com/cache/catalog/RLV0015/2-800x800.jpg",
+        url: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&auto=format&fit=crop&q=80",
       },
       {
         public_id: "test",

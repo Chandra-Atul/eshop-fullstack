@@ -36,27 +36,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        String token = resolveToken(request, "token");
-        String sellerToken = resolveToken(request, "seller_token");
+        System.out.println("===> [FILTER HIT] URI: " + request.getRequestURI() + " | Method: " + request.getMethod());
 
-        if (token != null && tokenProvider.validateToken(token)) {
-            Long userId = tokenProvider.getUserIdFromToken(token);
-            Optional<User> userOptional = userRepository.findById(userId);
-            if (userOptional.isPresent()) {
-                User user = userOptional.get();
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        user, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole())));
-                SecurityContextHolder.getContext().setAuthentication(auth);
+        try {
+            String token = resolveToken(request, "token");
+            String sellerToken = resolveToken(request, "seller_token");
+
+            if (token != null && tokenProvider.validateToken(token)) {
+                Long userId = tokenProvider.getUserIdFromToken(token);
+                Optional<User> userOptional = userRepository.findById(userId);
+                if (userOptional.isPresent()) {
+                    User user = userOptional.get();
+                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                            user, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole())));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
+            } else if (sellerToken != null && tokenProvider.validateToken(sellerToken)) {
+                Long sellerId = tokenProvider.getUserIdFromToken(sellerToken);
+                Optional<Shop> shopOptional = shopRepository.findById(sellerId);
+                if (shopOptional.isPresent()) {
+                    Shop seller = shopOptional.get();
+                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                            seller, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_Seller")));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
             }
-        } else if (sellerToken != null && tokenProvider.validateToken(sellerToken)) {
-            Long sellerId = tokenProvider.getUserIdFromToken(sellerToken);
-            Optional<Shop> shopOptional = shopRepository.findById(sellerId);
-            if (shopOptional.isPresent()) {
-                Shop seller = shopOptional.get();
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        seller, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_Seller")));
-                SecurityContextHolder.getContext().setAuthentication(auth);
-            }
+        } catch (Exception ex) {
+            System.err.println("===> [JWT ERROR] Failed to authenticate token: " + ex.getMessage());
+            // Clear context so request proceeds as anonymous rather than hanging
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);

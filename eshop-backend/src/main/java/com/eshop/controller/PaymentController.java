@@ -24,8 +24,8 @@ public class PaymentController {
         Long amount = Long.valueOf(body.get("amount").toString());
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
                 .setAmount(amount)
-                .setCurrency("inr")
-                .putMetadata("company", "Becodemy")
+                .setCurrency("INR")
+                .putMetadata("company", "EzyCart")
                 .build();
         PaymentIntent paymentIntent = PaymentIntent.create(params);
         return ResponseEntity.ok(Map.of("success", true, "client_secret", paymentIntent.getClientSecret()));
@@ -33,6 +33,7 @@ public class PaymentController {
 
     @GetMapping("/stripeapikey")
     public ResponseEntity<?> getStripeApiKey() {
+        System.out.println(">>> HIT api/v2/payment/stripeapikey <<<");
         return ResponseEntity.ok(Map.of("stripeApikey", stripeApiKey));
     }
 }

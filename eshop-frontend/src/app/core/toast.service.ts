@@ -1,22 +1,40 @@
 import { Injectable, signal } from '@angular/core';
 
-export interface ToastItem { id: number; type: 'success' | 'error' | 'info' | 'warning'; content: string; }
+export interface ToastMessage {
+  id: number;
+  text: string;
+  type: 'success' | 'error' | 'info';
+}
 
 @Injectable({ providedIn: 'root' })
 export class ToastService {
-  private counter = 0;
-  readonly toasts = signal<ToastItem[]>([]);
-  autoClose = 5000;
-  show(type: ToastItem['type'], content: string) {
-    const id = ++this.counter;
-    this.toasts.update((l) => [...l, { id, type, content }]);
-    setTimeout(() => this.remove(id), this.autoClose);
-    return id;
+  readonly toasts = signal<ToastMessage[]>([]);
+
+  show(text: string, type: 'success' | 'error' | 'info' = 'info', duration: number = 3000) {
+    if (!text) return;
+    const id = Date.now() + Math.random();
+    const newToast: ToastMessage = { id, text, type };
+
+    this.toasts.update((current) => [...current, newToast]);
+
+    setTimeout(() => {
+      this.remove(id);
+    }, duration);
   }
-  success(c: string) { return this.show('success', c); }
-  error(c: string) { return this.show('error', c); }
-  info(c: string) { return this.show('info', c); }
-  warning(c: string) { return this.show('warning', c); }
-  remove(id: number) { this.toasts.update((l) => l.filter((t) => t.id !== id)); }
-  clear() { this.toasts.set([]); }
+
+  success(text: string, duration?: number) {
+    this.show(text, 'success', duration);
+  }
+
+  error(text: string, duration?: number) {
+    this.show(text, 'error', duration);
+  }
+
+  info(text: string, duration?: number) {
+    this.show(text, 'info', duration);
+  }
+
+  remove(id: number) {
+    this.toasts.update((current) => current.filter((t) => t.id !== id));
+  }
 }

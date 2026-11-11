@@ -1,2 +1,4 @@
 # Project exclude paths
 /eshop-backend/target/
+# Ignore local Spring Boot secrets file
+**/application-local.properties

@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IconComponent } from '../../core/icon.component';
@@ -6,8 +6,8 @@ import { ToastService } from '../../core/toast.service';
 import { EventStore, ProductStore, SellerStore } from '../../core/state';
 import { categoriesData } from '../../static/data';
 
-// Helper to downscale large image files to prevent 413 Payload Too Large
-const resizeImageToBase64 = (file: File, maxWidth = 800, maxHeight = 800): Promise<string> => {
+// Helper to downscale large image files to prevent HTTP 413 Payload Too Large
+const resizeImageToBase64 = (file: File, maxWidth = 900, maxHeight = 900): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -35,13 +35,16 @@ const resizeImageToBase64 = (file: File, maxWidth = 800, maxHeight = 800): Promi
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
       };
       img.onerror = (err) => reject(err);
     };
     reader.onerror = (err) => reject(err);
   });
 };
+
+const inputClass =
+    'w-full mt-1.5 block px-3.5 h-11 bg-gray-50/70 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-[#4f46e5] focus:ring-2 focus:ring-[#4f46e5]/10 rounded-xl text-sm text-gray-800 outline-none transition-all placeholder:text-gray-400';
 
 // ==========================================
 // 1. CREATE PRODUCT COMPONENT
@@ -51,80 +54,133 @@ const resizeImageToBase64 = (file: File, maxWidth = 800, maxHeight = 800): Promi
   standalone: true,
   imports: [FormsModule, IconComponent],
   host: {
-    class: 'w-full flex justify-center',
-    style: 'display: flex; width: 100%; justify-content: center;',
+    class: 'w-full flex justify-center py-6',
   },
   template: `
-    <div class="w-full max-w-[750px] bg-white shadow-md h-[80vh] rounded-[8px] p-6 overflow-y-auto border border-gray-100">
-      <h5 class="text-[28px] font-Poppins font-semibold text-center text-gray-800">Create Product</h5>
-
-      <form (ngSubmit)="handleSubmit($event)" class="mt-4 space-y-4">
+    <div class="w-full max-w-3xl bg-white shadow-xl shadow-gray-100/70 rounded-3xl p-6 sm:p-10 border border-gray-100">
+      
+      <div class="flex items-center justify-between pb-6 border-b border-gray-100">
         <div>
-          <label class="block text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
-          <input type="text" name="name" [(ngModel)]="name" [class]="inputClass" placeholder="Enter product name..." required />
+          <span class="text-xs font-bold uppercase tracking-wider text-[#4f46e5]">Inventory Management</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1">Create New Product</h2>
+        </div>
+        <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-[#4f46e5] flex items-center justify-center font-bold">
+          📦
+        </div>
+      </div>
+
+      <form (ngSubmit)="handleSubmit($event)" class="mt-8 space-y-6">
+        
+        <!-- Product Name -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+            Product Title <span class="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            name="name"
+            [(ngModel)]="name"
+            [class]="inputClass"
+            placeholder="e.g. Ergonomic Mechanical Wireless Keyboard"
+            required
+          />
         </div>
 
+        <!-- Description -->
         <div>
-          <label class="block text-sm font-medium text-gray-700">Description <span class="text-red-500">*</span></label>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+            Detailed Description <span class="text-rose-500">*</span>
+          </label>
           <textarea
-            rows="5"
+            rows="4"
             name="description"
             [(ngModel)]="description"
-            class="w-full mt-2 block px-3 py-2 border border-gray-300 rounded-[4px] text-sm focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter product description..."
+            class="w-full mt-1.5 block p-3.5 bg-gray-50/70 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-[#4f46e5] focus:ring-2 focus:ring-[#4f46e5]/10 rounded-xl text-sm text-gray-800 outline-none transition-all placeholder:text-gray-400 resize-y"
+            placeholder="Highlight materials, features, key technical specifications, and warranty details..."
             required
           ></textarea>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Category <span class="text-red-500">*</span></label>
-          <select
-            class="w-full mt-2 border border-gray-300 h-[38px] px-2 rounded-[4px] text-sm focus:ring-blue-500 focus:border-blue-500"
-            [value]="category()"
-            (change)="category.set($any($event.target).value)"
-            required
-          >
-            <option value="">Choose a category</option>
-            @for (i of categoriesData; track i.title) {
-              <option [value]="i.title">{{ i.title }}</option>
-            }
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Tags</label>
-          <input type="text" name="tags" [(ngModel)]="tags" [class]="inputClass" placeholder="e.g. fashion, summer" />
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Category & Tags Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
-            <label class="block text-sm font-medium text-gray-700">Original Price</label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+              Department Category <span class="text-rose-500">*</span>
+            </label>
+            <select
+              [class]="inputClass"
+              [value]="category()"
+              (change)="category.set($any($event.target).value)"
+              required
+            >
+              <option value="">Select a category</option>
+              @for (cat of categoriesData; track cat.title) {
+                <option [value]="cat.title">{{ cat.title }}</option>
+              }
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+              Search Tags (Comma separated)
+            </label>
+            <input
+              type="text"
+              name="tags"
+              [(ngModel)]="tags"
+              [class]="inputClass"
+              placeholder="e.g. wireless, bluetooth, rgb"
+            />
+          </div>
+        </div>
+
+        <!-- Pricing: Original Price & Discount Price -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 p-5 bg-gray-50/70 rounded-2xl border border-gray-100">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+              Original MRP (₹)
+            </label>
             <input
               type="number"
               name="originalPrice"
               [ngModel]="originalPrice()"
               (ngModelChange)="originalPrice.set($event)"
               [class]="inputClass"
-              placeholder="e.g. 1999"
+              placeholder="e.g. 2499"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700">Price (With Discount) <span class="text-red-500">*</span></label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+              Selling Price with Discount (₹) <span class="text-rose-500">*</span>
+            </label>
             <input
               type="number"
               name="discountPrice"
               [ngModel]="discountPrice()"
               (ngModelChange)="discountPrice.set($event)"
               [class]="inputClass"
-              placeholder="e.g. 1499"
+              placeholder="e.g. 1899"
               required
             />
           </div>
+
+          <!-- Live Margin & Savings Preview -->
+          @if (computedDiscountPercentage() > 0) {
+            <div class="sm:col-span-2 flex items-center justify-between px-3 py-2 bg-emerald-50 rounded-xl border border-emerald-200 text-xs font-semibold text-emerald-800">
+              <span>Customer Savings: ₹{{ (originalPrice()! - discountPrice()!).toFixed(2) }}</span>
+              <span class="px-2 py-0.5 bg-emerald-600 text-white rounded-md font-bold">
+                {{ computedDiscountPercentage() }}% OFF Badge Active
+              </span>
+            </div>
+          }
         </div>
 
+        <!-- Inventory Stock -->
         <div>
-          <label class="block text-sm font-medium text-gray-700">Product Stock <span class="text-red-500">*</span></label>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+            Available Inventory Units <span class="text-rose-500">*</span>
+          </label>
           <input
             type="number"
             name="stock"
@@ -136,22 +192,37 @@ const resizeImageToBase64 = (file: File, maxWidth = 800, maxHeight = 800): Promi
           />
         </div>
 
+        <!-- Multi-Image Upload Area -->
         <div>
-          <label class="block text-sm font-medium text-gray-700">Upload Images <span class="text-red-500">*</span></label>
-          <input type="file" id="upload-product-img" class="hidden" multiple accept="image/*" (change)="handleImageChange($event)" />
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
+            Product Photos <span class="text-rose-500">*</span>
+          </label>
+          
+          <input
+            type="file"
+            id="upload-product-img"
+            class="hidden"
+            multiple
+            accept="image/*"
+            (change)="handleImageChange($event)"
+          />
 
-          <div class="w-full flex items-center flex-wrap gap-2 mt-2">
-            <label for="upload-product-img" class="cursor-pointer p-3 border-2 border-dashed border-gray-300 rounded hover:border-gray-400">
-              <app-icon name="AiOutlinePlusCircle" [size]="30" color="#555" />
+          <div class="flex items-center flex-wrap gap-3">
+            <label
+              for="upload-product-img"
+              class="w-24 h-24 border-2 border-dashed border-gray-300 hover:border-[#4f46e5] rounded-2xl flex flex-col items-center justify-center gap-1 cursor-pointer bg-gray-50/50 hover:bg-indigo-50/20 transition-all group"
+            >
+              <app-icon name="AiOutlinePlusCircle" [size]="24" class="text-gray-400 group-hover:text-[#4f46e5]" />
+              <span class="text-[11px] font-bold text-gray-500 group-hover:text-[#4f46e5]">Add Image</span>
             </label>
 
             @for (img of images(); track $index) {
-              <div class="relative">
-                <img [src]="img" alt="Uploaded preview" class="h-[100px] w-[100px] object-cover rounded border" />
+              <div class="relative w-24 h-24 rounded-2xl overflow-hidden border border-gray-200 group shadow-2xs">
+                <img [src]="img" alt="Preview" class="w-full h-full object-contain p-1 bg-white" />
                 <button
                   type="button"
                   (click)="removeImage($index)"
-                  class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                  class="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow-sm cursor-pointer transition-colors"
                 >
                   ✕
                 </button>
@@ -160,15 +231,22 @@ const resizeImageToBase64 = (file: File, maxWidth = 800, maxHeight = 800): Promi
           </div>
         </div>
 
-        <div class="pt-2">
+        <!-- Submit Button -->
+        <div class="pt-4">
           <button
             type="submit"
             [disabled]="isLoading()"
-            class="w-full h-[40px] bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-[4px] cursor-pointer transition-colors"
+            class="w-full h-12 bg-[#4f46e5] hover:bg-[#4338ca] disabled:opacity-50 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 shadow-md shadow-indigo-900/10 transition-all cursor-pointer"
           >
-            {{ isLoading() ? 'Creating...' : 'Create Product' }}
+            @if (isLoading()) {
+              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span>Publishing Product...</span>
+            } @else {
+              <span>Publish Product to Store</span>
+            }
           </button>
         </div>
+
       </form>
     </div>
   `,
@@ -179,10 +257,9 @@ export class CreateProductComponent {
   private toast = inject(ToastService);
   private router = inject(Router);
 
-  inputClass =
-      'w-full mt-2 block px-3 h-[38px] border border-gray-300 rounded-[4px] text-sm focus:ring-blue-500 focus:border-blue-500';
-
+  inputClass = inputClass;
   categoriesData = categoriesData;
+
   images = signal<string[]>([]);
   name = '';
   description = '';
@@ -192,6 +269,15 @@ export class CreateProductComponent {
   discountPrice = signal<number | null>(null);
   stock = signal<number | null>(null);
   isLoading = signal(false);
+
+  computedDiscountPercentage = () => {
+    const orig = Number(this.originalPrice());
+    const disc = Number(this.discountPrice());
+    if (orig && disc && orig > disc) {
+      return Math.round(((orig - disc) / orig) * 100);
+    }
+    return 0;
+  };
 
   constructor() {
     effect(() => {
@@ -232,19 +318,19 @@ export class CreateProductComponent {
     e.preventDefault();
 
     if (!this.name.trim()) {
-      this.toast.error('Product name is required.');
+      this.toast.error('Product title is required');
       return;
     }
-    if (!this.category() || this.category() === 'Choose a category') {
-      this.toast.error('Please choose a valid category.');
+    if (!this.category()) {
+      this.toast.error('Please choose a category');
       return;
     }
     if (!this.discountPrice()) {
-      this.toast.error('Discount price is required.');
+      this.toast.error('Selling discount price is required');
       return;
     }
     if (this.images().length === 0) {
-      this.toast.error('Please upload at least one image.');
+      this.toast.error('Please upload at least one product photo');
       return;
     }
 
@@ -255,10 +341,8 @@ export class CreateProductComponent {
     }
 
     const sellerId = seller?._id || (seller?.id ? String(seller.id) : null);
-
     if (!sellerId) {
-      console.error('Seller session not found:', seller);
-      this.toast.error('Seller session not found. Please log in again.');
+      this.toast.error('Seller session expired. Please log in again.');
       this.router.navigate(['/shop-login']);
       return;
     }
@@ -266,13 +350,15 @@ export class CreateProductComponent {
     try {
       this.isLoading.set(true);
 
+      const parsedOrigPrice = this.originalPrice() ? Number(this.originalPrice()) : null;
+
       await this.productStore.createProduct(
           this.name,
           this.description,
           this.category(),
           this.tags,
-          Number(this.originalPrice()) || 0,
-          Number(this.discountPrice()) || 0,
+          parsedOrigPrice as any,
+          Number(this.discountPrice()),
           Number(this.stock()) || 0,
           sellerId,
           this.images()
@@ -280,19 +366,8 @@ export class CreateProductComponent {
 
       this.toast.success('Product created successfully!');
       this.isLoading.set(false);
-
-      this.name = '';
-      this.description = '';
-      this.category.set('');
-      this.tags = '';
-      this.images.set([]);
-      this.originalPrice.set(null);
-      this.discountPrice.set(null);
-      this.stock.set(null);
-
-      await this.router.navigate(['/dashboard-products']);
+      this.router.navigate(['/dashboard-products']);
     } catch (err: any) {
-      console.error('Failed to create product:', err);
       this.isLoading.set(false);
       this.toast.error(err?.message || 'Failed to create product');
     }
@@ -307,80 +382,134 @@ export class CreateProductComponent {
   standalone: true,
   imports: [FormsModule, IconComponent],
   host: {
-    class: 'w-full flex justify-center',
-    style: 'display: flex; width: 100%; justify-content: center;',
+    class: 'w-full flex justify-center py-6',
   },
   template: `
-    <div class="w-full max-w-[750px] bg-white shadow-md h-[80vh] rounded-[8px] p-6 overflow-y-auto border border-gray-100">
-      <h5 class="text-[28px] font-Poppins font-semibold text-center text-gray-800">Create Event</h5>
-
-      <form (ngSubmit)="handleSubmit($event)" class="mt-4 space-y-4">
+    <div class="w-full max-w-3xl bg-white shadow-xl shadow-gray-100/70 rounded-3xl p-6 sm:p-10 border border-gray-100">
+      
+      <div class="flex items-center justify-between pb-6 border-b border-gray-100">
         <div>
-          <label class="block text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
-          <input type="text" name="name" [(ngModel)]="name" [class]="inputClass" placeholder="Enter event product name..." required />
+          <span class="text-xs font-bold uppercase tracking-wider text-rose-500">Flash Sales & Campaigns</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1">Create Promotional Event</h2>
+        </div>
+        <div class="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+          ⚡
+        </div>
+      </div>
+
+      <form (ngSubmit)="handleSubmit($event)" class="mt-8 space-y-6">
+        
+        <!-- Event Name -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+            Event Item Name <span class="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            name="name"
+            [(ngModel)]="name"
+            [class]="inputClass"
+            placeholder="e.g. Fire-Boltt Hurricane 2026 1.3 Curved Glass Display"
+            required
+          />
         </div>
 
+        <!-- Description -->
         <div>
-          <label class="block text-sm font-medium text-gray-700">Description <span class="text-red-500">*</span></label>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+            Event Description <span class="text-rose-500">*</span>
+          </label>
           <textarea
-            rows="5"
+            rows="4"
             name="description"
             [(ngModel)]="description"
-            class="w-full mt-2 block px-3 py-2 border border-gray-300 rounded-[4px] text-sm focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter event description..."
+            class="w-full mt-1.5 block p-3.5 bg-gray-50/70 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-[#4f46e5] focus:ring-2 focus:ring-[#4f46e5]/10 rounded-xl text-sm text-gray-800 outline-none transition-all placeholder:text-gray-400 resize-y"
+            placeholder="Describe the limited-time discount, warranty, and special inclusions..."
             required
           ></textarea>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Category <span class="text-red-500">*</span></label>
-          <select
-            class="w-full mt-2 border border-gray-300 h-[38px] px-2 rounded-[4px] text-sm focus:ring-blue-500 focus:border-blue-500"
-            [value]="category()"
-            (change)="category.set($any($event.target).value)"
-            required
-          >
-            <option value="">Choose a category</option>
-            @for (i of categoriesData; track i.title) {
-              <option [value]="i.title">{{ i.title }}</option>
-            }
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Tags</label>
-          <input type="text" name="tags" [(ngModel)]="tags" [class]="inputClass" placeholder="e.g. flash-sale, festival" />
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Category & Tags -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
-            <label class="block text-sm font-medium text-gray-700">Original Price</label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+              Category <span class="text-rose-500">*</span>
+            </label>
+            <select
+              [class]="inputClass"
+              [value]="category()"
+              (change)="category.set($any($event.target).value)"
+              required
+            >
+              <option value="">Select a category</option>
+              @for (cat of categoriesData; track cat.title) {
+                <option [value]="cat.title">{{ cat.title }}</option>
+              }
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+              Campaign Tags
+            </label>
+            <input
+              type="text"
+              name="tags"
+              [(ngModel)]="tags"
+              [class]="inputClass"
+              placeholder="e.g. flash-sale, smartwatch, festive"
+            />
+          </div>
+        </div>
+
+        <!-- Pricing: Original vs Deal Price -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 p-5 bg-rose-50/40 rounded-2xl border border-rose-100">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+              Original MRP (₹) <span class="text-rose-500">*</span>
+            </label>
             <input
               type="number"
               name="originalPrice"
               [ngModel]="originalPrice()"
               (ngModelChange)="originalPrice.set($event)"
               [class]="inputClass"
-              placeholder="e.g. 2999"
+              placeholder="e.g. 1999"
+              required
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700">Price (With Discount) <span class="text-red-500">*</span></label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+              Special Event Deal Price (₹) <span class="text-rose-500">*</span>
+            </label>
             <input
               type="number"
               name="discountPrice"
               [ngModel]="discountPrice()"
               (ngModelChange)="discountPrice.set($event)"
               [class]="inputClass"
-              placeholder="e.g. 1999"
+              placeholder="e.g. 1199"
               required
             />
           </div>
+
+          <!-- Live Percentage Badge Calculation -->
+          @if (computedDiscountPercentage() > 0) {
+            <div class="sm:col-span-2 flex items-center justify-between px-3 py-2 bg-emerald-50 rounded-xl border border-emerald-200 text-xs font-semibold text-emerald-800">
+              <span>Customer saves ₹{{ (originalPrice()! - discountPrice()!).toFixed(2) }} instantly</span>
+              <span class="px-2.5 py-0.5 bg-emerald-600 text-white rounded-md font-bold">
+                -{{ computedDiscountPercentage() }}% OFF Badge
+              </span>
+            </div>
+          }
         </div>
 
+        <!-- Stock and Dates -->
         <div>
-          <label class="block text-sm font-medium text-gray-700">Product Stock <span class="text-red-500">*</span></label>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+            Event Stock Allocation <span class="text-rose-500">*</span>
+          </label>
           <input
             type="number"
             name="stock"
@@ -392,9 +521,11 @@ export class CreateProductComponent {
           />
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
-            <label class="block text-sm font-medium text-gray-700">Event Start Date <span class="text-red-500">*</span></label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+              Event Start Date <span class="text-rose-500">*</span>
+            </label>
             <input
               type="date"
               name="startDate"
@@ -407,7 +538,9 @@ export class CreateProductComponent {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700">Event End Date <span class="text-red-500">*</span></label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">
+              Event End Date <span class="text-rose-500">*</span>
+            </label>
             <input
               type="date"
               name="endDate"
@@ -420,22 +553,36 @@ export class CreateProductComponent {
           </div>
         </div>
 
+        <!-- Image Upload -->
         <div>
-          <label class="block text-sm font-medium text-gray-700">Upload Images <span class="text-red-500">*</span></label>
-          <input type="file" id="upload-event-img" class="hidden" multiple accept="image/*" (change)="handleImageChange($event)" />
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
+            Event Banner Photos <span class="text-rose-500">*</span>
+          </label>
+          <input
+            type="file"
+            id="upload-event-img"
+            class="hidden"
+            multiple
+            accept="image/*"
+            (change)="handleImageChange($event)"
+          />
 
-          <div class="w-full flex items-center flex-wrap gap-2 mt-2">
-            <label for="upload-event-img" class="cursor-pointer p-3 border-2 border-dashed border-gray-300 rounded hover:border-gray-400">
-              <app-icon name="AiOutlinePlusCircle" [size]="30" color="#555" />
+          <div class="flex items-center flex-wrap gap-3">
+            <label
+              for="upload-event-img"
+              class="w-24 h-24 border-2 border-dashed border-gray-300 hover:border-rose-500 rounded-2xl flex flex-col items-center justify-center gap-1 cursor-pointer bg-gray-50/50 hover:bg-rose-50/20 transition-all group"
+            >
+              <app-icon name="AiOutlinePlusCircle" [size]="24" class="text-gray-400 group-hover:text-rose-500" />
+              <span class="text-[11px] font-bold text-gray-500 group-hover:text-rose-500">Add Image</span>
             </label>
 
             @for (img of images(); track $index) {
-              <div class="relative">
-                <img [src]="img" alt="Uploaded preview" class="h-[100px] w-[100px] object-cover rounded border" />
+              <div class="relative w-24 h-24 rounded-2xl overflow-hidden border border-gray-200 group shadow-2xs">
+                <img [src]="img" alt="Preview" class="w-full h-full object-contain p-1 bg-white" />
                 <button
                   type="button"
                   (click)="removeImage($index)"
-                  class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                  class="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow-sm cursor-pointer transition-colors"
                 >
                   ✕
                 </button>
@@ -444,15 +591,22 @@ export class CreateProductComponent {
           </div>
         </div>
 
-        <div class="pt-2">
+        <!-- Submit Button -->
+        <div class="pt-4">
           <button
             type="submit"
             [disabled]="isLoading()"
-            class="w-full h-[40px] bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-[4px] cursor-pointer transition-colors"
+            class="w-full h-12 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 shadow-md shadow-rose-900/10 transition-all cursor-pointer"
           >
-            {{ isLoading() ? 'Creating...' : 'Create Event' }}
+            @if (isLoading()) {
+              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span>Launching Event...</span>
+            } @else {
+              <span>Publish Limited-Time Event</span>
+            }
           </button>
         </div>
+
       </form>
     </div>
   `,
@@ -463,10 +617,9 @@ export class CreateEventComponent {
   private toast = inject(ToastService);
   private router = inject(Router);
 
-  inputClass =
-      'w-full mt-2 block px-3 h-[38px] border border-gray-300 rounded-[4px] text-sm focus:ring-blue-500 focus:border-blue-500';
-
+  inputClass = inputClass;
   categoriesData = categoriesData;
+
   images = signal<string[]>([]);
   name = '';
   description = '';
@@ -486,8 +639,17 @@ export class CreateEventComponent {
 
   minEndDate = () =>
       this.startDate()
-          ? new Date(this.startDate()!.getTime() + 3 * 86400000).toISOString().slice(0, 10)
+          ? new Date(this.startDate()!.getTime() + 86400000).toISOString().slice(0, 10)
           : this.today;
+
+  computedDiscountPercentage = () => {
+    const orig = Number(this.originalPrice());
+    const disc = Number(this.discountPrice());
+    if (orig && disc && orig > disc) {
+      return Math.round(((orig - disc) / orig) * 100);
+    }
+    return 0;
+  };
 
   constructor() {
     effect(() => {
@@ -543,23 +705,23 @@ export class CreateEventComponent {
     e.preventDefault();
 
     if (!this.name.trim()) {
-      this.toast.error('Event product name is required.');
+      this.toast.error('Event title is required');
       return;
     }
-    if (!this.category() || this.category() === 'Choose a category') {
-      this.toast.error('Please choose a valid category.');
+    if (!this.category()) {
+      this.toast.error('Please choose a category');
       return;
     }
     if (!this.discountPrice()) {
-      this.toast.error('Discount price is required.');
+      this.toast.error('Event deal price is required');
       return;
     }
     if (!this.startDate() || !this.endDate()) {
-      this.toast.error('Please select valid start and end dates.');
+      this.toast.error('Please select both start and end dates');
       return;
     }
     if (this.images().length === 0) {
-      this.toast.error('Please upload at least one image.');
+      this.toast.error('Please upload at least one event banner');
       return;
     }
 
@@ -570,9 +732,8 @@ export class CreateEventComponent {
     }
 
     const sellerId = seller?._id || (seller?.id ? String(seller.id) : null);
-
     if (!sellerId) {
-      this.toast.error('Seller session not found. Please log in again.');
+      this.toast.error('Seller session expired. Please log in again.');
       this.router.navigate(['/shop-login']);
       return;
     }
@@ -580,37 +741,31 @@ export class CreateEventComponent {
     try {
       this.isLoading.set(true);
 
+      const parsedOrigPrice = this.originalPrice()
+          ? Number(this.originalPrice())
+          : Number(this.discountPrice()) * 1.35;
+
+      // Note: sending both originalPrice and original_price so any backend getter catches it
       await this.eventStore.createEvent({
         name: this.name,
         description: this.description,
         category: this.category(),
         tags: this.tags,
-        originalPrice: Number(this.originalPrice()) || 0,
-        discountPrice: Number(this.discountPrice()) || 0,
+        originalPrice: parsedOrigPrice,
+        original_price: parsedOrigPrice,
+        discountPrice: Number(this.discountPrice()),
+        discount_price: Number(this.discountPrice()),
         stock: Number(this.stock()) || 0,
         images: this.images(),
         shopId: sellerId,
         start_Date: this.startDate()?.toISOString(),
-        Finish_Date: this.endDate()?.toISOString(),
+        finish_Date: this.endDate()?.toISOString(),
       });
 
-      this.toast.success('Event created successfully!');
+      this.toast.success('Event launched successfully!');
       this.isLoading.set(false);
-
-      this.name = '';
-      this.description = '';
-      this.category.set('');
-      this.tags = '';
-      this.images.set([]);
-      this.originalPrice.set(null);
-      this.discountPrice.set(null);
-      this.stock.set(null);
-      this.startDate.set(null);
-      this.endDate.set(null);
-
-      await this.router.navigate(['/dashboard-events']);
+      this.router.navigate(['/dashboard-events']);
     } catch (err: any) {
-      console.error('Failed to create event:', err);
       this.isLoading.set(false);
       this.toast.error(err?.message || 'Failed to create event');
     }

@@ -39,11 +39,16 @@ public class EventController {
             imagesLinks.add(cloudinaryService.uploadImage(base64, "products"));
         }
 
+        // Parse originalPrice safely (handles both "originalPrice" and "original_price")
+        Object origObj = body.get("originalPrice") != null ? body.get("originalPrice") : body.get("original_price");
+        Double origPrice = origObj != null && !origObj.toString().isBlank() ? Double.valueOf(origObj.toString()) : null;
+
         Event event = Event.builder()
                 .name((String) body.get("name"))
                 .description((String) body.get("description"))
                 .category((String) body.get("category"))
                 .tags((String) body.get("tags"))
+                .originalPrice(origPrice) // <--- MAP THIS FIELD
                 .discountPrice(Double.valueOf(body.get("discountPrice").toString()))
                 .stock(Integer.valueOf(body.get("stock").toString()))
                 .shopId(shopId)

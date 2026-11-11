@@ -118,11 +118,25 @@ public class OrderController {
             }
 
             // 5. Build and save orders with shopId populated
+            // 5. Create orders with shopId populated & update inventory
             List<Order> orders = new ArrayList<>();
             for (Map.Entry<Long, List<OrderItem>> entry : shopItemsMap.entrySet()) {
                 Long shopId = entry.getKey();
                 List<OrderItem> items = entry.getValue();
                 double shopTotal = items.stream().mapToDouble(i -> i.getDiscountPrice() * i.getQty()).sum();
+
+                // Deduct stock and increment sold_out for each purchased item
+                for (OrderItem item : items) {
+                    productRepository.findById(item.getProductId()).ifPresent(product -> {
+                        int currentStock = product.getStock() != null ? product.getStock() : 0;
+                        int currentSold = product.getSold_out() != null ? product.getSold_out() : 0;
+                        int qty = item.getQty() != null ? item.getQty() : 1;
+
+                        product.setStock(Math.max(0, currentStock - qty));
+                        product.setSold_out(currentSold + qty);
+                        productRepository.save(product);
+                    });
+                }
 
                 Order order = Order.builder()
                         .cart(items)
@@ -130,7 +144,7 @@ public class OrderController {
                         .userId(userId)
                         .userName(userName)
                         .userEmail(userEmail)
-                        .shopId(shopId) // Works now!
+                        .shopId(shopId)
                         .totalPrice(shopTotal)
                         .status("Processing")
                         .paymentInfo(paymentInfo)

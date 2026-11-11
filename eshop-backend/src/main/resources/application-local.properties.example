@@ -1,0 +1,12 @@
+# Copy this file to application-local.properties and fill in your keys
+spring.datasource.password=your_postgres_password
+
+spring.mail.username=your_gmail_address@gmail.com
+spring.mail.password=your_google_app_password
+
+cloudinary.cloud-name=your_cloudinary_cloud_name
+cloudinary.api-key=your_cloudinary_api_key
+cloudinary.api-secret=your_cloudinary_api_secret
+
+stripe.secret-key=your_stripe_secret_key
+stripe.api-key=your_stripe_publishable_key

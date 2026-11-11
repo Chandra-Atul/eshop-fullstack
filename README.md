@@ -47,34 +47,6 @@ A full-stack, enterprise-grade multi-vendor e-commerce platform built with an **
 
 ---
 
-## 📁 Repository Structure
-
-eshop-fullstack/
-├── .gitignore
-├── README.md
-├── eshop-backend/                        # Spring Boot 3 Application
-│   ├── mvnw / mvnw.cmd
-│   ├── pom.xml
-│   └── src/main/
-│       ├── java/com/eshop/
-│       │   ├── controller/               # REST Endpoints (Auth, Product, Event, Shop, etc.)
-│       │   ├── model/                    # JPA Entities (User, Shop, Product, Event, etc.)
-│       │   ├── repository/               # Spring Data Repositories
-│       │   └── service/                  # Business Logic, Cloudinary & Stripe Services
-│       └── resources/
-│           ├── application.properties    # Base configuration with environment variable fallbacks
-│           └── application-local.properties.example # Template for local credentials
-│
-└── eshop-frontend/                       # Angular Standalone Application
-    ├── package.json
-    ├── angular.json
-    ├── tailwind.config.js
-    └── src/app/
-        ├── components/                   # Reusable UI (Cart, EventCard, Navbar, Footer, etc.)
-        ├── core/                         # Signal Stores, Models, Toast & Icon services
-        ├── routes/                       # Application Pages (Home, Product, Events, Checkout)
-        └── static/                       # Static category lists and dummy assets
-
 
 
 ## ⚡ Quick Start
